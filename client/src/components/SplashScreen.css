@@ -1,0 +1,62 @@
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* background: #e8f4f4; */
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.5s ease-out,
+    visibility 0.5s ease-out;
+}
+
+.splash-screen--exit {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@keyframes splash-logo-spin-spring {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  50% {
+    transform: rotate(180deg) scale(1.06);
+  }
+
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+.splash-screen__logo {
+  display: block;
+  height: 9.5rem;
+  width: auto;
+  max-width: min(85vw, 300px);
+  object-fit: contain;
+  transform-origin: center;
+  will-change: transform;
+  animation: splash-logo-spin-spring 2.8s linear infinite;
+}
+
+@media (min-width: 768px) {
+  .splash-screen__logo {
+    height: 12rem;
+    max-width: 340px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-screen--exit {
+    transition: none;
+  }
+
+  .splash-screen__logo {
+    animation: none;
+  }
+}

@@ -1,0 +1,60 @@
+require('dotenv').config();
+
+const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+const connectDB = require('./config/db');
+const { startDiscountJobs } = require('./jobs/discountCron');
+
+const authRoutes = require('./routes/authRoutes.js');
+const productRoutes = require('./routes/productRoutes');
+const categoryRoutes = require('./routes/categoryRoutes.js');
+const cartRoutes=require('./routes/cartRoutes.js')
+const carouselRoutes = require('./routes/carouselRoutes');
+const orderRoutes = require('./routes/orderRoutes');
+const wishlistRoutes = require('./routes/wishlistRoutes');
+const discountRoutes = require('./routes/discountRoutes');
+const catalogRoutes = require('./routes/catalogRoutes');
+const addressRoutes = require('./routes/addressRoutes');
+const reelRoutes = require('./routes/reelRoutes');
+const { notFound, errorHandler } = require('./middleware/errorMiddleware');
+// const subCategoryRoutes = require('./routes/subCategoryRoutes');
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(morgan('dev'));
+
+// Database
+connectDB();
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/categories', categoryRoutes);
+// app.use('/api/subcategories', subCategoryRoutes);
+app.use('/api/cart',cartRoutes)
+app.use('/api/carousel', carouselRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/discounts', discountRoutes);
+app.use('/api/catalogs', catalogRoutes);
+app.use('/api/address', addressRoutes);
+app.use('/api/reels', reelRoutes);
+
+app.get('/', (req, res) => {
+  res.json({ message: 'E-commerce API is running' });
+});
+
+app.use(notFound);
+app.use(errorHandler);
+
+const PORT = process.env.PORT || 8000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  startDiscountJobs();
+});
+

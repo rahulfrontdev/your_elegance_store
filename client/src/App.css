@@ -1,0 +1,17 @@
+/* Do not use transform on this wrapper: it breaks position:fixed / sticky for all
+   descendants (they become fixed to this box instead of the viewport). */
+.app-shell {
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
+}
+
+.app-shell--ready {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell {
+    opacity: 1;
+    transition: none;
+  }
+}
