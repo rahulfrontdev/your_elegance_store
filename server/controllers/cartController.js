@@ -3,8 +3,12 @@ const path = require("path");
 const mongoose = require("mongoose");
 const Product = require("../models/Product");
 
-// Linux (AWS) is case-sensitive: support both cart.js and Cart.js on disk.
-const loadCartModel = () => {
+// AWS/Linux: load models/cart.js or models/Cart.js; fallback registers Cart if file missing after deploy.
+const getCartModel = () => {
+  if (mongoose.models.Cart) {
+    return mongoose.models.Cart;
+  }
+
   const modelsDir = path.join(__dirname, "../models");
   for (const fileName of ["cart.js", "Cart.js"]) {
     const modelPath = path.join(modelsDir, fileName);
@@ -12,12 +16,46 @@ const loadCartModel = () => {
       return require(modelPath);
     }
   }
-  throw new Error(
-    "Cart model not found. Expected server/models/cart.js — run git pull on the server."
+
+  const cartItemSchema = new mongoose.Schema(
+    {
+      productId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+        required: true,
+      },
+      quantity: {
+        type: Number,
+        required: true,
+        default: 1,
+        min: 1,
+      },
+    },
+    { _id: false }
   );
+
+  const cartSchema = new mongoose.Schema(
+    {
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+        unique: true,
+      },
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      items: [cartItemSchema],
+    },
+    { timestamps: true }
+  );
+
+  return mongoose.model("Cart", cartSchema);
 };
 
-const Cart = loadCartModel();
+const Cart = getCartModel();
 
 const cartOwnerFilter = (userId) => ({
   $or: [{ user: userId }, { userId }]
