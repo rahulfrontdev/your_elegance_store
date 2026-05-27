@@ -1,61 +1,6 @@
-const fs = require("fs");
-const path = require("path");
 const mongoose = require("mongoose");
+const Cart = require("../models/Cart");
 const Product = require("../models/Product");
-
-// AWS/Linux: load models/cart.js or models/Cart.js; fallback registers Cart if file missing after deploy.
-const getCartModel = () => {
-  if (mongoose.models.Cart) {
-    return mongoose.models.Cart;
-  }
-
-  const modelsDir = path.join(__dirname, "../models");
-  for (const fileName of ["cart.js", "Cart.js"]) {
-    const modelPath = path.join(modelsDir, fileName);
-    if (fs.existsSync(modelPath)) {
-      return require(modelPath);
-    }
-  }
-
-  const cartItemSchema = new mongoose.Schema(
-    {
-      productId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Product",
-        required: true,
-      },
-      quantity: {
-        type: Number,
-        required: true,
-        default: 1,
-        min: 1,
-      },
-    },
-    { _id: false }
-  );
-
-  const cartSchema = new mongoose.Schema(
-    {
-      user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: true,
-        unique: true,
-      },
-      userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        default: null,
-      },
-      items: [cartItemSchema],
-    },
-    { timestamps: true }
-  );
-
-  return mongoose.model("Cart", cartSchema);
-};
-
-const Cart = getCartModel();
 
 const cartOwnerFilter = (userId) => ({
   $or: [{ user: userId }, { userId }]
