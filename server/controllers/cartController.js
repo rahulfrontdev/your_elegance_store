@@ -1,6 +1,23 @@
+const fs = require("fs");
+const path = require("path");
 const mongoose = require("mongoose");
-const Cart = require("../models/cart");
 const Product = require("../models/Product");
+
+// Linux (AWS) is case-sensitive: support both cart.js and Cart.js on disk.
+const loadCartModel = () => {
+  const modelsDir = path.join(__dirname, "../models");
+  for (const fileName of ["cart.js", "Cart.js"]) {
+    const modelPath = path.join(modelsDir, fileName);
+    if (fs.existsSync(modelPath)) {
+      return require(modelPath);
+    }
+  }
+  throw new Error(
+    "Cart model not found. Expected server/models/cart.js — run git pull on the server."
+  );
+};
+
+const Cart = loadCartModel();
 
 const cartOwnerFilter = (userId) => ({
   $or: [{ user: userId }, { userId }]
