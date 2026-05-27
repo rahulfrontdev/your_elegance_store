@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const Cart = require("../models/Cart");
+const Cart = require("../models/cart");
 const Product = require("../models/Product");
 
 const cartOwnerFilter = (userId) => ({
@@ -264,12 +264,12 @@ exports.removeItem = async (req, res) => {
 
     const cart = await Cart.findOne(cartOwnerFilter(userId));
 
-if (!cart) {
-  return res.status(404).json({
-    success: false,
-    message: "Cart not found"
-  });
-}
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: "Cart not found"
+      });
+    }
 
     cart.items = cart.items.filter(
       item => item.productId.toString() !== productId
