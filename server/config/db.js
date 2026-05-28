@@ -1,21 +1,13 @@
 const mongoose = require('mongoose');
 
 const connectDB = async () => {
-  const isProd = process.env.NODE_ENV === 'production';
   let uri = process.env.MONGO_URI;
-  console.log("ssss", uri)
 
   if (!uri) {
-    if (isProd) {
-      console.error(
-        'MongoDB: MONGO_URI is not set. Add it to your environment or .env (see .env.example).'
-      );
-      process.exit(1);
-    }
-    // uri = 'mongodb://127.0.0.1:27017';
-    // console.warn(
-    //   'MongoDB: MONGO_URI not set; using local default mongodb://127.0.0.1:27017 (copy .env.example to .env to configure).'
-    // );
+    console.error(
+      'MongoDB: MONGO_URI is not set. Add it to your environment or .env (see .env.example).'
+    );
+    process.exit(1);
   }
 
   const dbName = process.env.MONGO_DB_NAME || 'ecommerce_db';
