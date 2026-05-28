@@ -1,7 +1,7 @@
 import axiosInstance from './axiosInstance'
 
 const apiBaseUrl = () =>
-  String(import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace(/\/+$/, '')
+  String(import.meta.env.VITE_API_BASE_URL || 'http://51.20.40.43:8000/api').replace(/\/+$/, '')
 
 async function readJsonBody(res) {
   const text = await res.text()
