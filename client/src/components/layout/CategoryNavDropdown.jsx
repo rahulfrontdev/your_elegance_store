@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useNavDropdown } from '../../context/NavDropdownContext'
+import usePrefersClickNav from '../../hooks/usePrefersClickNav'
 import CategoryNavTree from './CategoryNavTree'
 
 const CategoryNavDropdown = ({
@@ -16,6 +17,7 @@ const CategoryNavDropdown = ({
 }) => {
   const navigate = useNavigate()
   const { scrollNavVisible } = useNavDropdown()
+  const prefersClickNav = usePrefersClickNav()
   const isScroll = variant === 'scroll'
   /* Only one navbar shows the menu — avoids duplicate panels (main + scroll) */
   const showMenuPanel =
@@ -70,8 +72,19 @@ const CategoryNavDropdown = ({
   }, [isScroll, showMenuPanel, updatePortalPos])
 
   const handleEnter = () => {
+    if (prefersClickNav) return
     if (isScroll) updatePortalPos()
     onMouseEnter()
+  }
+
+  const handleLeave = () => {
+    if (prefersClickNav) return
+    onMouseLeave()
+  }
+
+  const handleTriggerClick = () => {
+    if (isScroll) updatePortalPos()
+    onTriggerClick()
   }
 
   const panelInner = (
@@ -102,8 +115,8 @@ const CategoryNavDropdown = ({
           zIndex: 5110,
         }}
         role="menu"
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
+        onMouseEnter={prefersClickNav ? undefined : onMouseEnter}
+        onMouseLeave={prefersClickNav ? undefined : onMouseLeave}
       >
         {panelInner}
       </div>,
@@ -116,14 +129,14 @@ const CategoryNavDropdown = ({
         ref={triggerRef}
         className={`${wrapClass}${isOpen ? ' nav-dropdown--open' : ''}`}
         onMouseEnter={handleEnter}
-        onMouseLeave={onMouseLeave}
+        onMouseLeave={handleLeave}
       >
         <button
           type="button"
           className={triggerClass}
           aria-haspopup="true"
           aria-expanded={isOpen}
-          onClick={onTriggerClick}
+          onClick={handleTriggerClick}
         >
           {category.name} ▾
         </button>
