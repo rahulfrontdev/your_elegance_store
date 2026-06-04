@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { clearWishlist, deleteWishlistItem, fetchWishlist } from '../../api/wishlistApi'
+import { useAuth } from '../../context/AuthContext.jsx'
+
+function isAuthError(err) {
+  const status = err?.response?.status
+  const msg = String(err?.response?.data?.message || err?.response?.data?.error || '').toLowerCase()
+  return status === 401 || msg.includes('not authorized') || msg.includes('no token')
+}
 
 const WishlistPage = ({ showTitle = true }) => {
+  const { isAuthenticated } = useAuth()
   const [items, setItems] = useState([])
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
@@ -10,6 +18,12 @@ const WishlistPage = ({ showTitle = true }) => {
   const [clearingAll, setClearingAll] = useState(false)
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setStatus('failed')
+      setError('')
+      return
+    }
+
     const loadWishlist = async () => {
       setStatus('loading')
       setError('')
@@ -22,12 +36,16 @@ const WishlistPage = ({ showTitle = true }) => {
         setStatus('succeeded')
       } catch (err) {
         setStatus('failed')
-        setError(err?.response?.data?.message || 'Unable to load wishlist.')
+        if (isAuthError(err)) {
+          setError('')
+        } else {
+          setError(err?.response?.data?.message || 'Unable to load wishlist.')
+        }
       }
     }
 
     loadWishlist()
-  }, [])
+  }, [isAuthenticated])
 
   const normalizedItems = useMemo(
     () =>
@@ -101,7 +119,22 @@ const WishlistPage = ({ showTitle = true }) => {
 
       {status === 'loading' && <p className="text-sm text-neutral-600">Loading wishlist...</p>}
 
-      {status === 'failed' && <p className="text-sm text-red-600">{error}</p>}
+      {status === 'failed' && !isAuthenticated && (
+        <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center shadow-sm">
+          <p className="text-sm text-neutral-700">Sign in to view and save items in your wishlist.</p>
+          <Link
+            to="/login"
+            state={{ from: { pathname: '/wishlist' } }}
+            className="mt-4 inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Sign in
+          </Link>
+        </div>
+      )}
+
+      {status === 'failed' && isAuthenticated && error && (
+        <p className="text-sm text-red-600">{error}</p>
+      )}
 
       {status === 'succeeded' && normalizedItems.length === 0 && (
         <p className="text-sm text-neutral-600">Saved items will appear here.</p>

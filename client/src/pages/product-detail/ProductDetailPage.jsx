@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext.jsx'
 import { useCart } from '../../context/CartContext.jsx'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { clearCurrentProduct, loadProductById } from '../../features/products/productsSlice'
@@ -42,6 +43,7 @@ const ProductDetailPage = () => {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const { current: productRaw, status, error } = useAppSelector((s) => s.products)
+  const { isAuthenticated } = useAuth()
   const { addItem, getItem } = useCart()
   const [cartMessage, setCartMessage] = useState('')
   const [isWishlisted, setIsWishlisted] = useState(false)
@@ -57,8 +59,12 @@ const ProductDetailPage = () => {
   }, [dispatch, productId])
 
   useEffect(() => {
+    if (!isAuthenticated || !productId) {
+      setIsWishlisted(false)
+      return
+    }
+
     const loadWishlistStatus = async () => {
-      if (!productId) return
       try {
         const { data } = await fetchWishlistStatus(productId)
         const payload = data?.data || data
@@ -72,7 +78,7 @@ const ProductDetailPage = () => {
     }
 
     loadWishlistStatus()
-  }, [productId])
+  }, [productId, isAuthenticated])
 
   const product = useMemo(() => {
     if (!productRaw) return null
@@ -168,6 +174,10 @@ const ProductDetailPage = () => {
 
   const handleWishlistToggle = async () => {
     if (!productId || wishlistLoading) return
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: { pathname: `/products/${productId}` } } })
+      return
+    }
     setWishlistLoading(true)
     try {
       const { data } = await toggleWishlistItem(productId)

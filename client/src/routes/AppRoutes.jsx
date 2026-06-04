@@ -22,6 +22,7 @@ import AccountMyAddressPage from '../pages/account/AccountMyAddressPage'
 import Register from '../pages/Register'
 import Login from '../pages/Login'
 import RequireAdmin from '../components/admin/RequireAdmin'
+import RequireAuth from '../components/auth/RequireAuth'
 import RequireCustomer from '../components/auth/RequireCustomer'
 import AdminLayout from '../layouts/AdminLayout'
 import AdminDashboard from '../pages/admin/AdminDashboard'
@@ -83,15 +84,17 @@ const AppRoutes = () => {
         <Route path="cart" element={<CartPage />} />
         <Route path="checkout" element={<CheckoutPage />} />
         <Route path="checkout/success" element={<OrderSuccessPage />} />
-        <Route path="account" element={<AccountPage />}>
-          <Route index element={<AccountOrdersPage />} />
-          <Route path="orders" element={<AccountOrdersPage />} />
-          <Route path="orders/:orderId" element={<AccountOrderDetailsPage />} />
-          <Route path="wishlist" element={<AccountWishlistPage />} />
-          <Route path="profile" element={<AccountProfilePage />} />
-          <Route path="my-address" element={<AccountMyAddressPage />} />
+        <Route element={<RequireAuth />}>
+          <Route path="account" element={<AccountPage />}>
+            <Route index element={<AccountOrdersPage />} />
+            <Route path="orders" element={<AccountOrdersPage />} />
+            <Route path="orders/:orderId" element={<AccountOrderDetailsPage />} />
+            <Route path="wishlist" element={<AccountWishlistPage />} />
+            <Route path="profile" element={<AccountProfilePage />} />
+            <Route path="my-address" element={<AccountMyAddressPage />} />
+          </Route>
+          <Route path="wishlist" element={<WishlistPage />} />
         </Route>
-        <Route path="wishlist" element={<WishlistPage />} />
       </Route>
     </Routes>
   )

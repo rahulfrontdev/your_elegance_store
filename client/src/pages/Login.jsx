@@ -4,6 +4,7 @@ import { axiosInstance } from '../api/axiosInstance'
 import { useCart } from '../context/CartContext.jsx'
 import { isAdminRole, isCustomerRole, useAuth } from '../context/AuthContext.jsx'
 import { clearAuthStorage } from '../utils/authStorage'
+import { resolveAuthRedirect } from '../utils/resolveAuthRedirect'
 
 const initialForm = { email: '', password: '' }
 
@@ -15,7 +16,7 @@ const Login = ({ roleMode = 'customer' }) => {
     const location = useLocation()
     const { mergeGuestCart } = useCart()
     const { setUser, isAdmin, isCustomer } = useAuth()
-    const redirectTo = location.state?.from || '/checkout'
+    const redirectTo = resolveAuthRedirect(location.state?.from, '/account')
     const registeredMobile = location.state?.registeredMobile || ''
     const isAdminLogin = roleMode === 'admin'
     const hasWrongStoredRole = (isAdminLogin && isCustomer) || (!isAdminLogin && isAdmin)

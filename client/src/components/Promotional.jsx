@@ -4,6 +4,9 @@ import 'react-responsive-carousel/lib/styles/carousel.min.css'
 import { fetchPublicCarouselSlides } from '../api/carouselApi'
 import { normalizeCarouselSlideList } from '../utils/carouselMedia'
 
+const HERO_SLIDE_HEIGHT =
+  'h-[440px] min-h-[440px] sm:h-[520px] sm:min-h-[520px] lg:h-[680px] lg:min-h-[680px]'
+
 const defaultBanners = [
     {
         id: 'default-1',
@@ -51,14 +54,14 @@ const Promotional = () => {
 
     if (loading) {
         return (
-            <div className="w-full">
-                <div className="h-[420px] sm:h-[480px] md:h-[400px] animate-pulse bg-gray-200" aria-hidden />
+            <div className="w-full home-hero">
+                <div className={`${HERO_SLIDE_HEIGHT} animate-pulse bg-gray-200`} aria-hidden />
             </div>
         )
     }
 
     return (
-        <div className="w-full">
+        <div className="w-full home-hero">
             <Carousel
                 showThumbs={false}
                 showStatus={false}
@@ -73,13 +76,13 @@ const Promotional = () => {
 
                     <div
                         key={String(item.id)}
-                        className="h-[420px] sm:h-[480px] md:h-[480px] bg-white flex items-center justify-center"
+                        className={`${HERO_SLIDE_HEIGHT} bg-white flex items-center justify-center overflow-hidden`}
                     >
 
                         <img
                             src={item.image}
                             alt={item.alt}
-                            className="h-full w-full object-cover"
+                            className="h-full w-full object-cover object-center"
                         />
 
                     </div>

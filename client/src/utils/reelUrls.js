@@ -53,3 +53,13 @@ export function normalizeInstagramEmbedInput(raw) {
   if (!parts) return ''
   return `https://www.instagram.com/${parts.type}/${parts.code}/embed/`
 }
+
+/** Canonical permalink + iframe embed src for a reel from the API. */
+export function getReelEmbedProps(reel) {
+  const rawEmbed = reel?.embedUrl || reel?.embed_url || ''
+  const rawReel = reel?.reelUrl || reel?.reel_url || ''
+  const embedSrc = toInstagramEmbedUrl(rawReel, rawEmbed)
+  const permalink = normalizeInstagramReelUrl(rawReel || rawEmbed)
+  const isValid = Boolean(embedSrc && permalink && embedSrc.includes('/embed'))
+  return { embedSrc, permalink, isValid }
+}

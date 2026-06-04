@@ -87,6 +87,10 @@ const buildReelPayload = (body, isCreate = false) => {
     payload.thumbnail = String(body.thumbnail || '').trim();
   }
 
+  if (body.videoUrl !== undefined) {
+    payload.videoUrl = String(body.videoUrl || '').trim();
+  }
+
   if (body.isActive !== undefined) {
     const isActive = parseBoolean(body.isActive);
     if (isActive === null) return { error: 'isActive must be true or false' };

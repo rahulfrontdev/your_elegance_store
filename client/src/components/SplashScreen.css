@@ -1,16 +1,25 @@
+/* Full-screen splash — logo at true mobile screen center */
 .splash-screen {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* background: #e8f4f4; */
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  height: 100svh;
+  height: 100dvh;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #ffffff;
   opacity: 1;
   visibility: visible;
+  touch-action: none;
+  overscroll-behavior: none;
   transition:
-    opacity 0.5s ease-out,
-    visibility 0.5s ease-out;
+    opacity 0.35s ease-out,
+    visibility 0.35s ease-out;
+  --stage-size: min(52vw, 160px);
 }
 
 .splash-screen--exit {
@@ -19,35 +28,126 @@
   pointer-events: none;
 }
 
-@keyframes splash-logo-spin-spring {
+/* Pin logo box to exact center of the phone screen */
+.splash-screen__logo-stage {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  width: var(--stage-size);
+  height: var(--stage-size);
+  margin: 0;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+/* Spin runs here — keeps stage (and center point) from moving */
+.splash-screen__logo-spin {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+  animation: splash-logo-spin 2.1s linear 1 forwards;
+}
+
+.splash-screen__logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  object-fit: contain;
+  object-position: center center;
+  /* No transform on the image — prevents mobile center jump */
+}
+
+.splash-screen__tagline {
+  position: fixed;
+  left: 50%;
+  top: calc(50% + (var(--stage-size) / 2) + 0.5rem);
+  z-index: 1;
+  width: min(90vw, 15rem);
+  margin: 0;
+  padding: 0 0.5rem;
+  transform: translateX(-50%);
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  line-height: 1.35;
+  color: #475569;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+@keyframes splash-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 767px) {
+  .splash-screen {
+    --stage-size: min(48vw, 150px);
+  }
+
+  .splash-screen__tagline {
+    font-size: 0.68rem;
+    top: calc(50% + (var(--stage-size) / 2) + 0.45rem);
+  }
+}
+
+@media (max-width: 380px) {
+  .splash-screen {
+    --stage-size: min(44vw, 136px);
+  }
+}
+
+@media (max-height: 520px) {
+  .splash-screen {
+    --stage-size: min(38vw, 112px);
+  }
+
+  .splash-screen__tagline {
+    font-size: 0.62rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .splash-screen {
+    --stage-size: 240px;
+  }
+
+  .splash-screen__logo-spin {
+    animation: splash-logo-spin-desktop 2.1s linear 1 forwards;
+  }
+
+  .splash-screen__tagline {
+    font-size: 1rem;
+    width: 22rem;
+    top: calc(50% + (var(--stage-size) / 2) + 0.75rem);
+  }
+}
+
+@keyframes splash-logo-spin-desktop {
   0% {
     transform: rotate(0deg) scale(1);
   }
 
   50% {
-    transform: rotate(180deg) scale(1.06);
+    transform: rotate(180deg) scale(1.03);
   }
 
   100% {
     transform: rotate(360deg) scale(1);
-  }
-}
-
-.splash-screen__logo {
-  display: block;
-  height: 9.5rem;
-  width: auto;
-  max-width: min(85vw, 300px);
-  object-fit: contain;
-  transform-origin: center;
-  will-change: transform;
-  animation: splash-logo-spin-spring 2.8s linear infinite;
-}
-
-@media (min-width: 768px) {
-  .splash-screen__logo {
-    height: 12rem;
-    max-width: 340px;
   }
 }
 
@@ -56,7 +156,7 @@
     transition: none;
   }
 
-  .splash-screen__logo {
+  .splash-screen__logo-spin {
     animation: none;
   }
 }

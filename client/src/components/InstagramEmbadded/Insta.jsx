@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchReels } from '../../api/reelsApi'
+import { getReelEmbedProps } from '../../utils/reelUrls'
+import InstagramReelEmbed from './InstagramReelEmbed'
 
 function normalizeReelList(payload) {
   const root = payload?.data ?? payload
@@ -12,6 +14,12 @@ function normalizeReelList(payload) {
 
 function pickId(reel) {
   return reel?._id || reel?.id || reel?.reelUrl || reel?.embedUrl || reel?.title
+}
+
+function reelIsPlayable(reel) {
+  if (reel?.isActive === false) return false
+  if (String(reel?.videoUrl || '').trim()) return true
+  return getReelEmbedProps(reel).isValid
 }
 
 const Insta = () => {
@@ -46,7 +54,7 @@ const Insta = () => {
   const activeReels = useMemo(
     () =>
       reels
-        .filter((reel) => reel?.isActive !== false && reel?.embedUrl)
+        .filter(reelIsPlayable)
         .sort((a, b) => {
           const orderA = Number.isFinite(Number(a?.displayOrder)) ? Number(a.displayOrder) : 9999
           const orderB = Number.isFinite(Number(b?.displayOrder)) ? Number(b.displayOrder) : 9999
@@ -61,9 +69,9 @@ const Insta = () => {
   }
 
   return (
-    <section className="px-3 py-8 sm:px-6">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-5 text-center">
+    <section className="px-1 py-5 sm:px-2 sm:py-6 lg:px-2">
+      <div className="mx-auto max-w-8xl">
+        <div className="mb-4 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-neutral-500">
             Instagram Reels
           </p>
@@ -75,21 +83,13 @@ const Insta = () => {
         {status === 'loading' ? (
           <p className="py-8 text-center text-sm text-neutral-500">Loading reels...</p>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {activeReels.map((reel) => (
               <article
                 key={pickId(reel)}
                 className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm"
               >
-                <iframe
-                  key={reel.embedUrl}
-                  src={reel.embedUrl}
-                  title={reel.title || 'Instagram reel'}
-                  className="h-[520px] w-full border-0"
-                  loading="lazy"
-                  allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                  allowFullScreen
-                />
+                <InstagramReelEmbed reel={reel} title={reel.title} />
                 {reel.title && (
                   <div className="border-t border-neutral-100 px-4 py-3">
                     <p className="text-sm font-semibold text-neutral-900">{reel.title}</p>

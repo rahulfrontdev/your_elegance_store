@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useSearchParams } from 'react-router-dom'
+import { fetchRootCategories } from '../../api/categoriesApi'
 import { loadProducts } from '../../features/products/productsSlice'
+import { sortLabels } from '../../utils/sortAlpha'
 import ProductCard from './ProductCard'
 import ProductFilter from './ProductFilter'
 
@@ -30,16 +32,40 @@ const ProductsPage = () => {
 
   const category = categoryFromUrl
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
+  const [filterCategories, setFilterCategories] = useState(['All'])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadFilterCategories = async () => {
+      try {
+        const response = await fetchRootCategories()
+        const roots = response?.data?.data || response?.data || []
+        const names = roots.map((cat) => cat?.name).filter(Boolean)
+        if (!cancelled && names.length) {
+          setFilterCategories(sortLabels(names, 'All'))
+        }
+      } catch {
+        /* keep fallback from products below */
+      }
+    }
+
+    loadFilterCategories()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const categoryOptions = useMemo(() => {
-    const names = new Set()
+    const names = new Set(filterCategories.filter((name) => name !== 'All'))
     products.forEach((p) => {
       const categoryName =
         typeof p?.category === 'string' ? p.category : p?.category?.name
       if (categoryName) names.add(categoryName)
     })
-    return ['All', ...Array.from(names)]
-  }, [products])
+    if (category !== 'All') names.add(category)
+    return sortLabels(Array.from(names), 'All')
+  }, [products, filterCategories, category])
 
   const setSearch = (value) => {
     setSearchParams(

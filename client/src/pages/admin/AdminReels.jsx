@@ -13,6 +13,7 @@ const emptyForm = {
   reelUrl: '',
   embedUrl: '',
   thumbnail: '',
+  videoUrl: '',
   isActive: true,
   displayOrder: '',
 }
@@ -51,6 +52,7 @@ function formFromReel(reel) {
     reelUrl: reel?.reelUrl || '',
     embedUrl: reel?.embedUrl || '',
     thumbnail: reel?.thumbnail || '',
+    videoUrl: reel?.videoUrl || '',
     isActive: reel?.isActive !== false,
     displayOrder:
       reel?.displayOrder === 0 || reel?.displayOrder
@@ -69,6 +71,7 @@ function buildPayload(form) {
 
   if (form.reelUrl.trim()) payload.reelUrl = form.reelUrl.trim()
   if (form.thumbnail.trim()) payload.thumbnail = form.thumbnail.trim()
+  if (form.videoUrl.trim()) payload.videoUrl = form.videoUrl.trim()
 
   if (form.displayOrder !== '' && !Number.isNaN(Number(form.displayOrder))) {
     payload.displayOrder = Number(form.displayOrder)
@@ -210,6 +213,7 @@ const AdminReels = () => {
         reelUrl: reel?.reelUrl || '',
         embedUrl: reel?.embedUrl || '',
         thumbnail: reel?.thumbnail || '',
+        videoUrl: reel?.videoUrl || '',
         isActive: reel?.isActive === false,
         displayOrder: reel?.displayOrder,
       })
@@ -261,7 +265,8 @@ const AdminReels = () => {
               {editingId ? 'Edit reel' : 'New reel'}
             </h2>
             <p className="mt-1 text-xs text-neutral-500">
-              Fields: title, embedUrl, reelUrl, thumbnail, isActive, displayOrder.
+              Instagram embeds often open Instagram when tapped. Add a direct video URL (.mp4) to
+              play fully on your website.
             </p>
           </div>
           {editingId && (
@@ -320,8 +325,22 @@ const AdminReels = () => {
                 value={form.thumbnail}
                 onChange={(e) => updateField('thumbnail', e.target.value)}
                 className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500"
-                placeholder="Optional"
+                placeholder="Optional poster image"
               />
+            </label>
+
+            <label className="text-sm md:col-span-2">
+              <span className="font-medium text-neutral-700">Direct video URL (recommended)</span>
+              <input
+                value={form.videoUrl}
+                onChange={(e) => updateField('videoUrl', e.target.value)}
+                className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+                placeholder="https://yoursite.com/videos/reel.mp4"
+              />
+              <span className="mt-1 block text-xs text-neutral-500">
+                Upload the reel as MP4 to your server or CDN. This plays on your site without
+                sending users to Instagram.
+              </span>
             </label>
 
             <label className="text-sm">

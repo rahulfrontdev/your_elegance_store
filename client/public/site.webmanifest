@@ -1,0 +1,21 @@
+{
+  "name": "Your Elegance Store",
+  "short_name": "Elegance Store",
+  "description": "Shop elegant jewellery, bags, and curated fashion. Free shipping on orders above ₹999.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#e8f4f4",
+  "theme_color": "#74bfbf",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/Themed_Logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

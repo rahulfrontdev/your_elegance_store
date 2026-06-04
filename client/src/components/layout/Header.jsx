@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { LayoutDashboard } from 'lucide-react'
-import CategoryNavTree from './CategoryNavTree'
 import { useCart } from '../../context/CartContext.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import useCategoryNavigation from '../../hooks/useCategoryNavigation'
+import { SCROLL_NAV_LOGO_SRC, STORE_LOGO_SRC, applyStoreLogoFallback } from '../../config/brandLogo'
+import { useNavDropdown } from '../../context/NavDropdownContext'
+import CategoryNavDropdown from './CategoryNavDropdown'
 
 const IconUser = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
@@ -60,16 +62,18 @@ const Header = () => {
   }
 
   const { cartCount } = useCart()
-  const { isAdmin, user, logout } = useAuth()
+  const { isAdmin, isAuthenticated, user, logout } = useAuth()
   const [showScrollNav, setShowScrollNav] = useState(false)
-  const scrollNavDetailsRefs = useRef({})
   const categoryNavigation = useCategoryNavigation()
+  const { openId, open, scheduleClose, close, toggle, setScrollNavVisible } = useNavDropdown()
 
   useEffect(() => {
-    Object.values(scrollNavDetailsRefs.current).forEach((el) => {
-      if (el) el.open = false
-    })
-  }, [location.pathname, location.search])
+    setScrollNavVisible(showScrollNav)
+  }, [showScrollNav, setScrollNavVisible])
+
+  useEffect(() => {
+    if (!showScrollNav) close()
+  }, [showScrollNav, close])
 
   useEffect(() => {
     const getScrollTop = () => {
@@ -131,16 +135,13 @@ const Header = () => {
     <>
       <header className="site-header">
         <div className="site-header__inner">
-          <Link to="/" className="site-header__logo">
+          <Link to="/" className="site-header__logo" aria-label="Your Elegance Store home">
             <img
-              src="/Themed_Logo.png"
-              alt="Store logo"
+              src={STORE_LOGO_SRC}
+              alt="Your Elegance Store"
               className="site-header__logo-img"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-              }}
+              onError={applyStoreLogoFallback}
             />
-
           </Link>
 
           <div className="site-header__search-wrap ">
@@ -180,10 +181,20 @@ const Header = () => {
                 <LayoutDashboard size={20} strokeWidth={1.75} />
               </Link>
             )}
-            <Link to="/account" className="site-header__icon-link" aria-label="Account">
+            <Link
+              to={isAuthenticated ? '/account' : '/login'}
+              state={isAuthenticated ? undefined : { from: { pathname: '/account' } }}
+              className="site-header__icon-link"
+              aria-label={isAuthenticated ? 'Account' : 'Sign in'}
+            >
               <IconUser />
             </Link>
-            <Link to="/wishlist" className="site-header__icon-link" aria-label="Wishlist">
+            <Link
+              to={isAuthenticated ? '/wishlist' : '/login'}
+              state={isAuthenticated ? undefined : { from: { pathname: '/wishlist' } }}
+              className="site-header__icon-link"
+              aria-label={isAuthenticated ? 'Wishlist' : 'Sign in to view wishlist'}
+            >
               <IconHeart />
             </Link>
             <Link to="/cart" className="site-header__icon-link site-header__cart-link" aria-label="Shopping cart">
@@ -205,7 +216,7 @@ const Header = () => {
           <div className="scroll-primary-nav__inner">
             <div className="scroll-primary-nav__brand">
               <Link to="/" aria-label="Home">
-                <img src="/Logo2.png" alt="" className="scroll-primary-nav__logo" />
+                <img src={SCROLL_NAV_LOGO_SRC} alt="" className="scroll-primary-nav__logo" />
               </Link>
             </div>
 
@@ -220,21 +231,16 @@ const Header = () => {
 
               {categoryNavigation.map((category) =>
                 category.children.length > 0 ? (
-                  <details
+                  <CategoryNavDropdown
                     key={category.id}
-                    ref={(el) => {
-                      scrollNavDetailsRefs.current[category.id] = el
-                    }}
-                    className="scroll-primary-nav__details"
-                  >
-                    <summary className="scroll-primary-nav__summary whitespace-nowrap px-2 py-1 text-sm text-slate-900 hover:opacity-90">
-                      {category.name} ▾
-                    </summary>
-                    <div className="scroll-primary-nav__dropdown-panel">
-                      <Link to={category.to}>All {category.name}</Link>
-                      <CategoryNavTree nodes={category.children} />
-                    </div>
-                  </details>
+                    category={category}
+                    variant="scroll"
+                    isOpen={openId === String(category.id)}
+                    onMouseEnter={() => open(category.id)}
+                    onMouseLeave={scheduleClose}
+                    onTriggerClick={() => toggle(category.id)}
+                    onNavigate={close}
+                  />
                 ) : (
                   <Link
                     key={category.id}
@@ -272,10 +278,20 @@ const Header = () => {
                   <LayoutDashboard size={20} strokeWidth={1.75} />
                 </Link>
               )}
-              <Link to="/account" className="site-header__icon-link scroll-primary-nav__icon" aria-label="Account">
+              <Link
+                to={isAuthenticated ? '/account' : '/login'}
+                state={isAuthenticated ? undefined : { from: { pathname: '/account' } }}
+                className="site-header__icon-link scroll-primary-nav__icon"
+                aria-label={isAuthenticated ? 'Account' : 'Sign in'}
+              >
                 <IconUser />
               </Link>
-              <Link to="/wishlist" className="site-header__icon-link scroll-primary-nav__icon" aria-label="Wishlist">
+              <Link
+                to={isAuthenticated ? '/wishlist' : '/login'}
+                state={isAuthenticated ? undefined : { from: { pathname: '/wishlist' } }}
+                className="site-header__icon-link scroll-primary-nav__icon"
+                aria-label={isAuthenticated ? 'Wishlist' : 'Sign in to view wishlist'}
+              >
                 <IconHeart />
               </Link>
               <Link

@@ -1,8 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import HomeSectionProductCard from '../products/HomeSectionProductCard'
 import { fetchLatestProducts } from '../../api/productsApi'
 
-const isActiveDiscount = (value) => value === true || value === 'true' || value === 1 || value === '1'
+/** Mobile: same 2-col width as Shop by Category / Best Deal (gap-3) */
+const ARRIVAL_CARD_CLASS =
+  'flex-shrink-0 snap-start w-[calc((100%-0.75rem)/2)] sm:w-[calc((100%-1rem)/2)] lg:w-[calc((100%-3.75rem)/4)]'
 
 const NewArrivalProduct = () => {
   const scrollRef = useRef(null)
@@ -29,99 +31,56 @@ const NewArrivalProduct = () => {
   }, [])
 
   const scroll = (direction) => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({
-        left: direction === 'left' ? -240 : 240,
-        behavior: 'smooth',
-      })
-    }
+    const el = scrollRef.current
+    if (!el) return
+    const firstCard = el.querySelector('[data-arrival-card]')
+    const step = firstCard ? firstCard.getBoundingClientRect().width + 12 : 280
+    el.scrollBy({
+      left: direction === 'left' ? -step : step,
+      behavior: 'smooth',
+    })
   }
 
   return (
-    <section className="mt-8 px-4 relative">
-      <h2 className="text-lg sm:text-xl font-semibold mb-4">New Arrivals</h2>
+    <section className="mt-4 px-1 sm:mt-5 sm:px-2 lg:px-2">
+      <div className="relative mx-auto max-w-8xl lg:ml-2">
+        <h2 className="mb-3 text-center text-lg font-semibold sm:mb-4 sm:text-xl">New Arrivals</h2>
 
-      <button
-        onClick={() => scroll('left')}
-        className="absolute left-0 top-1/2 -translate-y-1/2 bg-white border rounded-full px-2 py-1 shadow z-10"
-        aria-label="Scroll left"
-      >
-        ◀
-      </button>
+        <button
+          type="button"
+          onClick={() => scroll('left')}
+          className="absolute left-0 top-[calc(50%+0.75rem)] z-10 -translate-y-1/2 rounded-full border bg-white px-2 py-1 shadow"
+          aria-label="Scroll left"
+        >
+          ◀
+        </button>
 
-      <div ref={scrollRef} className="flex gap-4 overflow-x-auto scroll-smooth pb-2">
-        {loading ? (
-          <p className="text-sm text-gray-500">Loading latest products...</p>
-        ) : products.length === 0 ? (
-          <p className="text-sm text-gray-500">No new arrivals found.</p>
-        ) : (
-          products.map((item) => {
-            const id = item?._id || item?.id
-            const image = item?.imageUrl || item?.images?.[0] || ''
-            const discountPercentage = Number(item?.discountPercentage ?? 0)
-            const discountAmount = Number(item?.discountAmount ?? 0)
-            const hasDiscount =
-              isActiveDiscount(item?.hasActiveDiscount) ||
-              item?.discountedPrice != null ||
-              discountPercentage > 0 ||
-              discountAmount > 0
-            const originalPrice = Number(item?.originalPrice ?? item?.price ?? 0)
-            const sellingPrice = hasDiscount
-              ? Number(item?.discountedPrice ?? item?.price ?? 0)
-              : Number(item?.price ?? 0)
-            const campaignLabel = item?.appliedDiscount?.discountName || item?.appliedDiscount?.name || ''
+        <div
+          ref={scrollRef}
+          className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory sm:gap-4 lg:gap-5"
+        >
+          {loading ? (
+            <p className="w-full text-center text-sm text-neutral-500">Loading latest products...</p>
+          ) : products.length === 0 ? (
+            <p className="w-full text-center text-sm text-neutral-500">No new arrivals found.</p>
+          ) : (
+            products.map((item) => (
+              <div key={item?._id || item?.id} data-arrival-card className={ARRIVAL_CARD_CLASS}>
+                <HomeSectionProductCard product={item} className="h-full" />
+              </div>
+            ))
+          )}
+        </div>
 
-            return (
-              <Link
-                key={id}
-                to={`/products/${id}`}
-                className="min-w-[170px] rounded-lg p-2 bg-white hover:shadow border border-gray-100"
-              >
-                <div className="relative w-full h-32 rounded bg-gray-50 overflow-hidden">
-                  {image ? (
-                    <img
-                      src={image}
-                      alt={item?.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-                      No Image
-                    </div>
-                  )}
-                  {hasDiscount && discountPercentage > 0 && (
-                    <span className="absolute left-1.5 top-1.5 rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                      {discountPercentage}% OFF
-                    </span>
-                  )}
-                </div>
-
-                <h3 className="text-sm mt-2 font-medium line-clamp-2">{item?.name}</h3>
-                <p className="text-sm font-semibold text-gray-900">₹{sellingPrice.toLocaleString('en-IN')}</p>
-                {hasDiscount && originalPrice > 0 && (
-                  <p className="text-xs text-gray-400 line-through">₹{originalPrice.toLocaleString('en-IN')}</p>
-                )}
-                {hasDiscount && discountAmount > 0 && (
-                  <p className="text-[11px] font-medium text-emerald-700">
-                    Save ₹{discountAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                  </p>
-                )}
-                {hasDiscount && campaignLabel && (
-                  <p className="text-[10px] font-medium text-emerald-800 line-clamp-1">{campaignLabel}</p>
-                )}
-              </Link>
-            )
-          })
-        )}
+        <button
+          type="button"
+          onClick={() => scroll('right')}
+          className="absolute right-0 top-[calc(50%+0.75rem)] z-10 -translate-y-1/2 rounded-full border bg-white px-2 py-1 shadow"
+          aria-label="Scroll right"
+        >
+          ▶
+        </button>
       </div>
-
-      <button
-        onClick={() => scroll('right')}
-        className="absolute right-0 top-1/2 -translate-y-1/2 bg-white border rounded-full px-2 py-1 shadow z-10"
-        aria-label="Scroll right"
-      >
-        ▶
-      </button>
     </section>
   )
 }

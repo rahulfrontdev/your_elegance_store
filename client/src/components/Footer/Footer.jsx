@@ -1,5 +1,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext.jsx";
+
+const ACCOUNT_LINKS = [
+    { label: "My Orders", to: "/account/orders" },
+    { label: "Wishlist", to: "/wishlist" },
+    { label: "My Profile", to: "/account/profile" },
+];
 
 const SOCIAL_LINKS = {
     facebook: "https://www.facebook.com/share/1DhyNCZAmU/?mibextid=wwXIfr",
@@ -22,9 +29,23 @@ function InstagramIcon() {
     );
 }
 
+function AccountFooterLink({ to, children }) {
+    const { isAuthenticated } = useAuth();
+
+    return (
+        <Link
+            to={isAuthenticated ? to : "/login"}
+            state={isAuthenticated ? undefined : { from: { pathname: to } }}
+            className="hover:text-black"
+        >
+            {children}
+        </Link>
+    );
+}
+
 const Footer = () => {
     return (
-        <footer className="bg-gray-100 pt-10 pb-6 px-4 sm:px-6 mt-6">
+        <footer className="bg-gray-100 mt-4 px-2 pb-4 pt-6 sm:mt-5 sm:px-3 sm:pb-5 sm:pt-7 lg:px-4">
 
             <div className="max-w-7xl mx-auto">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-left">
@@ -79,10 +100,11 @@ const Footer = () => {
                         <h3 className="font-semibold text-base sm:text-lg mb-2 sm:mb-4">My Account</h3>
 
                         <ul className="space-y-2 text-sm text-gray-600">
-                            {/* <li className="hover:text-black cursor-pointer">Dashboard</li> */}
-                            <li className="hover:text-black cursor-pointer">My Orders</li>
-                            <li className="hover:text-black cursor-pointer">My Reviews</li>
-                            <li className="hover:text-black cursor-pointer">My Profile</li>
+                            {ACCOUNT_LINKS.map((item) => (
+                                <li key={item.to}>
+                                    <AccountFooterLink to={item.to}>{item.label}</AccountFooterLink>
+                                </li>
+                            ))}
                         </ul>
                     </div>
 
@@ -106,7 +128,7 @@ const Footer = () => {
                                     Terms &amp; Conditions
                                 </Link>
                             </li>
-                            <li>
+                            {/* <li>
                                 <Link to="/terms#product" className="hover:text-black">
                                     Product
                                 </Link>
@@ -115,8 +137,8 @@ const Footer = () => {
                                 <Link to="/terms#services" className="hover:text-black">
                                     Services
                                 </Link>
-                            </li>
-                            <li>
+                            </li> */}
+                            {/* <li>
                                 <Link to="/terms#pricing-information" className="hover:text-black">
                                     Pricing Information
                                 </Link>
@@ -125,17 +147,17 @@ const Footer = () => {
                                 <Link to="/terms#credit-card-details" className="hover:text-black">
                                     Credit Card Details
                                 </Link>
-                            </li>
-                            <li>
+                            </li> */}
+                            {/* <li>
                                 <Link to="/terms#delivery-of-product" className="hover:text-black">
                                     Delivery of the Product
                                 </Link>
-                            </li>
-                            <li>
+                            </li> */}
+                            {/* <li>
                                 <Link to="/terms#warranties-and-claims" className="hover:text-black">
                                     Warranties and Claims
                                 </Link>
-                            </li>
+                            </li> */}
                             <li>
                                 <Link to="/privacy-policy" className="hover:text-black">
                                     Privacy Policy
@@ -154,9 +176,9 @@ const Footer = () => {
                                     About Us
                                 </Link>
                             </li>
-                            <li className="hover:text-black cursor-pointer">New Arrivals</li>
+                            {/* <li className="hover:text-black cursor-pointer">New Arrivals</li>
                             <li className="hover:text-black cursor-pointer">Special Offers</li>
-                            <li className="hover:text-black cursor-pointer">Hot Deals</li>
+                            <li className="hover:text-black cursor-pointer">Hot Deals</li> */}
                         </ul>
                     </div>
                 </div>

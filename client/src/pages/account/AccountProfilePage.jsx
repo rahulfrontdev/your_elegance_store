@@ -5,9 +5,7 @@ const AccountProfilePage = () => {
 
   const fullName = user?.name || user?.fullName || 'N/A'
   const email = user?.email || 'N/A'
-  const phone = user?.mobile || user?.mobile || 'N/A'
-  const role = user?.role || 'customer'
-  const accountId = user?._id || user?.id || 'N/A'
+  const phone = user?.mobile || user?.phone || 'N/A'
 
   return (
     <div className="space-y-3">
@@ -26,17 +24,9 @@ const AccountProfilePage = () => {
             <p className="text-xs text-neutral-500">Email</p>
             <p className="mt-0.5 text-sm font-semibold text-neutral-900 break-all">{email}</p>
           </div>
-          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-2.5">
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-2.5 sm:col-span-2">
             <p className="text-xs text-neutral-500">Phone</p>
             <p className="mt-0.5 text-sm font-semibold text-neutral-900">{phone}</p>
-          </div>
-          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-2.5">
-            <p className="text-xs text-neutral-500">Role</p>
-            <p className="mt-0.5 text-sm font-semibold capitalize text-neutral-900">{role}</p>
-          </div>
-          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-2.5 sm:col-span-2">
-            <p className="text-xs text-neutral-500">Account ID</p>
-            <p className="mt-0.5 text-sm font-semibold text-neutral-900 break-all">{accountId}</p>
           </div>
         </div>
       </div>

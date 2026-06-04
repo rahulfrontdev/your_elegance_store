@@ -28,6 +28,12 @@ const reelSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    /** Direct .mp4/.webm URL — plays on-site without opening Instagram */
+    videoUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     isActive: {
       type: Boolean,
       default: true,
