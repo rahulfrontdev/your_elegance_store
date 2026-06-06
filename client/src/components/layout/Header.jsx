@@ -54,8 +54,16 @@ const Header = () => {
 
   const setSearchValue = (v) => {
     if (onProducts) {
-      if (v) setSearchParams({ q: v }, { replace: true })
-      else setSearchParams({}, { replace: true })
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          const trimmed = v.trim()
+          if (trimmed) next.set('q', trimmed)
+          else next.delete('q')
+          return next
+        },
+        { replace: true }
+      )
     } else {
       setDraftQuery(v)
     }
@@ -70,6 +78,11 @@ const Header = () => {
   useEffect(() => {
     setScrollNavVisible(showScrollNav)
   }, [showScrollNav, setScrollNavVisible])
+
+  useEffect(() => {
+    document.body.classList.toggle('scroll-nav-visible', showScrollNav)
+    return () => document.body.classList.remove('scroll-nav-visible')
+  }, [showScrollNav])
 
   useEffect(() => {
     if (!showScrollNav) close()
@@ -115,8 +128,15 @@ const Header = () => {
     e.preventDefault()
     const q = searchValue.trim()
     if (onProducts) {
-      if (q) setSearchParams({ q }, { replace: true })
-      else setSearchParams({}, { replace: true })
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          if (q) next.set('q', q)
+          else next.delete('q')
+          return next
+        },
+        { replace: true }
+      )
     } else if (q) {
       navigate(`/products?q=${encodeURIComponent(q)}`)
     } else {
@@ -130,6 +150,23 @@ const Header = () => {
     logout()
     navigate('/login', { replace: true })
   }
+
+  const searchForm = (
+    <form className="site-header__search" onSubmit={onSearch} role="search">
+      <input
+        type="search"
+        name="q"
+        value={searchValue}
+        onChange={(e) => setSearchValue(e.target.value)}
+        placeholder="Search products…"
+        className="site-header__search-input"
+        autoComplete="off"
+      />
+      <button type="submit" className="site-header__search-submit" aria-label="Search">
+        <IconSearch />
+      </button>
+    </form>
+  )
 
   return (
     <>
@@ -145,20 +182,7 @@ const Header = () => {
           </Link>
 
           <div className="site-header__search-wrap ">
-            <form className="site-header__search" onSubmit={onSearch} role="search">
-              <input
-                type="search"
-                name="q"
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                placeholder="Search products…"
-                className="site-header__search-input "
-                autoComplete="off"
-              />
-              <button type="submit" className="site-header__search-submit" aria-label="Search">
-                <IconSearch />
-              </button>
-            </form>
+            {searchForm}
           </div>
 
           <div className="site-header__actions">
@@ -220,6 +244,7 @@ const Header = () => {
               </Link>
             </div>
 
+            <div className="scroll-primary-nav__search">{searchForm}</div>
 
             <div className="scroll-primary-nav__links">
               <Link to="/" className="whitespace-nowrap px-2 py-1 text-sm text-slate-900 hover:opacity-90">

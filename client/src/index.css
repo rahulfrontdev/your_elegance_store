@@ -40,26 +40,3 @@
   align-items: center;
   background: #fafafa;
 }
-
-.instagram-reel-embed__note {
-  margin: 0;
-  padding: 0.5rem 0.75rem 0;
-  max-width: 20rem;
-  text-align: center;
-  font-size: 0.7rem;
-  line-height: 1.35;
-  color: #64748b;
-}
-
-.instagram-reel-embed__link {
-  display: inline-block;
-  margin: 0.35rem 0 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #2563eb;
-  text-decoration: none;
-}
-
-.instagram-reel-embed__link:hover {
-  text-decoration: underline;
-}

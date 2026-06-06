@@ -3,7 +3,7 @@ import { stringifyEntityId } from '../../utils/discountPreview'
 
 const isActiveDiscount = (value) => value === true || value === 'true' || value === 1 || value === '1'
 
-const ProductCard = ({ product }) => {
+const ProductCard = ({ product, returnPath = '/products' }) => {
   const productId = stringifyEntityId(product?._id ?? product?.id)
   const imageSrc = product?.imageUrl || product?.image
   const brandLabel =
@@ -27,6 +27,7 @@ const ProductCard = ({ product }) => {
   return (
     <Link
       to={`/products/${productId}`}
+      state={{ from: returnPath }}
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-lg"
     >
       <div className="relative aspect-square overflow-hidden bg-neutral-100">

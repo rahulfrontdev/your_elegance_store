@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback } from 'react'
 import { flushSync } from 'react-dom'
-import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useNavDropdown } from '../../context/NavDropdownContext'
-import usePrefersClickNav from '../../hooks/usePrefersClickNav'
 import CategoryNavTree from './CategoryNavTree'
 
 const CategoryNavDropdown = ({
@@ -16,14 +14,10 @@ const CategoryNavDropdown = ({
   onNavigate,
 }) => {
   const navigate = useNavigate()
-  const { scrollNavVisible } = useNavDropdown()
-  const prefersClickNav = usePrefersClickNav()
+  const { scrollNavVisible, prefersClickNav } = useNavDropdown()
   const isScroll = variant === 'scroll'
-  /* Only one navbar shows the menu — avoids duplicate panels (main + scroll) */
-  const showMenuPanel =
-    isOpen && (isScroll ? scrollNavVisible : !scrollNavVisible)
-  const triggerRef = useRef(null)
-  const [portalPos, setPortalPos] = useState(null)
+  const isActiveNav = isScroll ? scrollNavVisible : !scrollNavVisible
+  const showDesktopPanel = isOpen && isActiveNav && !prefersClickNav
 
   const wrapClass = isScroll
     ? 'scroll-primary-nav__details nav-dropdown'
@@ -48,43 +42,20 @@ const CategoryNavDropdown = ({
     [closeMenu, navigate]
   )
 
-  const updatePortalPos = useCallback(() => {
-    const el = triggerRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const centerOnDesktop = window.innerWidth >= 768
-    setPortalPos({
-      top: rect.bottom,
-      left: centerOnDesktop ? rect.left + rect.width / 2 : rect.left,
-      transform: centerOnDesktop ? 'translateX(-50%)' : 'none',
-    })
-  }, [])
-
-  useEffect(() => {
-    if (!isScroll || !showMenuPanel) return
-    updatePortalPos()
-    window.addEventListener('scroll', updatePortalPos, true)
-    window.addEventListener('resize', updatePortalPos)
-    return () => {
-      window.removeEventListener('scroll', updatePortalPos, true)
-      window.removeEventListener('resize', updatePortalPos)
-    }
-  }, [isScroll, showMenuPanel, updatePortalPos])
+  const handleTriggerClick = (event) => {
+    event.stopPropagation()
+    if (!isActiveNav) return
+    onTriggerClick()
+  }
 
   const handleEnter = () => {
-    if (prefersClickNav) return
-    if (isScroll) updatePortalPos()
+    if (prefersClickNav || !isActiveNav) return
     onMouseEnter()
   }
 
   const handleLeave = () => {
     if (prefersClickNav) return
     onMouseLeave()
-  }
-
-  const handleTriggerClick = () => {
-    if (isScroll) updatePortalPos()
-    onTriggerClick()
   }
 
   const panelInner = (
@@ -100,54 +71,27 @@ const CategoryNavDropdown = ({
     </div>
   )
 
-  const scrollPortal =
-    isScroll &&
-    showMenuPanel &&
-    portalPos &&
-    createPortal(
-      <div
-        className="scroll-primary-nav__dropdown-panel scroll-primary-nav__dropdown-panel--portal nav-dropdown--open"
-        style={{
-          position: 'fixed',
-          top: portalPos.top,
-          left: portalPos.left,
-          transform: portalPos.transform,
-          zIndex: 5110,
-        }}
-        role="menu"
-        onMouseEnter={prefersClickNav ? undefined : onMouseEnter}
-        onMouseLeave={prefersClickNav ? undefined : onMouseLeave}
-      >
-        {panelInner}
-      </div>,
-      document.body
-    )
-
   return (
-    <>
-      <div
-        ref={triggerRef}
-        className={`${wrapClass}${isOpen ? ' nav-dropdown--open' : ''}`}
-        onMouseEnter={handleEnter}
-        onMouseLeave={handleLeave}
+    <div
+      className={`${wrapClass}${isOpen && isActiveNav ? ' nav-dropdown--open' : ''}`}
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+    >
+      <button
+        type="button"
+        className={triggerClass}
+        aria-haspopup="true"
+        aria-expanded={isOpen && isActiveNav}
+        onClick={handleTriggerClick}
       >
-        <button
-          type="button"
-          className={triggerClass}
-          aria-haspopup="true"
-          aria-expanded={isOpen}
-          onClick={handleTriggerClick}
-        >
-          {category.name} ▾
-        </button>
-        {!isScroll && showMenuPanel && (
-          <div className={panelClass} role="menu">
-            {panelInner}
-          </div>
-        )}
-      </div>
-      {scrollPortal}
-    </>
+        {category.name} ▾
+      </button>
+      {showDesktopPanel && (
+        <div className={panelClass} role="menu">
+          {panelInner}
+        </div>
+      )}
+    </div>
   )
 }
 

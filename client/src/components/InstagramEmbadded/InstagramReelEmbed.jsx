@@ -7,7 +7,7 @@ import { getReelEmbedProps } from '../../utils/reelUrls'
 const InstagramReelEmbed = ({ reel, title }) => {
   const videoUrl = String(reel?.videoUrl || '').trim()
   const thumbnail = String(reel?.thumbnail || '').trim()
-  const { embedSrc, permalink, isValid } = getReelEmbedProps(reel)
+  const { embedSrc, isValid } = getReelEmbedProps(reel)
 
   if (videoUrl) {
     return (
@@ -44,18 +44,6 @@ const InstagramReelEmbed = ({ reel, title }) => {
         allowFullScreen
         referrerPolicy="strict-origin-when-cross-origin"
       />
-      <p className="instagram-reel-embed__note">
-        Preview from Instagram. Tap inside may open Instagram — add a{' '}
-        <strong>Direct video URL</strong> in admin to play fully on this site.
-      </p>
-      <a
-        href={permalink}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="instagram-reel-embed__link"
-      >
-        Watch on Instagram ↗
-      </a>
     </div>
   )
 }

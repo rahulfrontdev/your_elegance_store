@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useCart } from '../../context/CartContext.jsx'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
@@ -41,6 +41,11 @@ function ProductGallery({ product }) {
 const ProductDetailPage = () => {
   const { productId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const backToProductsPath =
+    typeof location.state?.from === 'string' && location.state.from.startsWith('/products')
+      ? location.state.from
+      : '/products'
   const dispatch = useAppDispatch()
   const { current: productRaw, status, error } = useAppSelector((s) => s.products)
   const { isAuthenticated } = useAuth()
@@ -215,7 +220,7 @@ const ProductDetailPage = () => {
       <div className="px-4 py-16 text-center">
         <h1 className="text-xl font-semibold text-neutral-900">Unable to load product</h1>
         <p className="mt-2 text-sm text-neutral-600">{String(error || 'Please try again.')}</p>
-        <Link to="/products" className="mt-6 inline-block text-sm font-medium text-blue-600 hover:underline">
+        <Link to={backToProductsPath} className="mt-6 inline-block text-sm font-medium text-blue-600 hover:underline">
           ← Back to products
         </Link>
       </div>
@@ -227,7 +232,7 @@ const ProductDetailPage = () => {
       <div className=" px-4 py-16 text-center">
         <h1 className="text-xl font-semibold text-neutral-900">Product not found</h1>
         <p className="mt-2 text-sm text-neutral-600">This item may have been removed or the link is incorrect.</p>
-        <Link to="/products" className="mt-6 inline-block text-sm font-medium text-blue-600 hover:underline">
+        <Link to={backToProductsPath} className="mt-6 inline-block text-sm font-medium text-blue-600 hover:underline">
           ← Back to products
         </Link>
       </div>
@@ -237,7 +242,7 @@ const ProductDetailPage = () => {
   return (
     <div className="mx-auto w-full max-w-7xl px-3 py-2 sm:px-4 sm:py-4 lg:px-6">
       <nav className="mb-2 text-xs text-neutral-500 sm:mb-3 sm:text-sm">
-        <Link to="/products" className="hover:text-blue-600">
+        <Link to={backToProductsPath} className="hover:text-blue-600">
           Products
         </Link>
         <span className="mx-2">/</span>

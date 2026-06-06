@@ -3,11 +3,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 const CLOSE_DELAY_MS = 120
 
 /**
- * One open nav dropdown at a time; opens on hover, closes shortly after pointer leaves.
+ * One open nav dropdown at a time; opens on hover (desktop), tap (mobile).
  */
 export default function useHoverNavDropdown(closeOnLocationKey) {
   const [openId, setOpenId] = useState(null)
   const closeTimer = useRef(null)
+  const ignoreOutsideUntil = useRef(0)
 
   const clearCloseTimer = useCallback(() => {
     if (closeTimer.current) {
@@ -19,6 +20,7 @@ export default function useHoverNavDropdown(closeOnLocationKey) {
   const open = useCallback(
     (id) => {
       clearCloseTimer()
+      ignoreOutsideUntil.current = Date.now() + 250
       setOpenId(String(id))
     },
     [clearCloseTimer]
@@ -38,7 +40,11 @@ export default function useHoverNavDropdown(closeOnLocationKey) {
     (id) => {
       clearCloseTimer()
       const key = String(id)
-      setOpenId((prev) => (prev === key ? null : key))
+      setOpenId((prev) => {
+        const next = prev === key ? null : key
+        if (next) ignoreOutsideUntil.current = Date.now() + 250
+        return next
+      })
     },
     [clearCloseTimer]
   )
@@ -47,33 +53,32 @@ export default function useHoverNavDropdown(closeOnLocationKey) {
     close()
   }, [closeOnLocationKey, close])
 
-  /* Close on outside tap or when any menu child link is tapped */
+  /* Desktop only — mobile uses backdrop tap to close */
   useEffect(() => {
     if (!openId) return
+
+    const isTouch =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(hover: none), (pointer: coarse)').matches
+    if (isTouch) return
 
     const menuLinkSelector =
       '.site-navbar-primary__panel-inner a, .scroll-primary-nav__dropdown-panel-inner a'
 
-    const onPointerDown = (event) => {
+    const onOutside = (event) => {
+      if (Date.now() < ignoreOutsideUntil.current) return
+
       const target = event.target
       if (!(target instanceof Element)) return
 
-      if (target.closest('.nav-dropdown-backdrop')) {
-        close()
-        return
-      }
-
-      /* Let menu links handle close + navigate on click (avoid unmount before tap) */
       if (target.closest(menuLinkSelector)) return
-
       if (target.closest('.nav-dropdown')) return
-      if (target.closest('.scroll-primary-nav__dropdown-panel--portal')) return
 
       close()
     }
 
-    document.addEventListener('pointerdown', onPointerDown, true)
-    return () => document.removeEventListener('pointerdown', onPointerDown, true)
+    document.addEventListener('mousedown', onOutside, true)
+    return () => document.removeEventListener('mousedown', onOutside, true)
   }, [openId, close])
 
   useEffect(() => () => clearCloseTimer(), [clearCloseTimer])
