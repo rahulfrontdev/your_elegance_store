@@ -31,7 +31,19 @@ function formatProductSaveError(error) {
   return error?.message || "Failed to save product. Please try again."
 }
 
+const emptyVariation = () => ({
+  _id: "",
+  sku: "",
+  name: "",
+  description: "",
+  colour: "",
+  price: "",
+  imageUrl: "",
+  image: null,
+});
+
 const initialFormState = {
+  sku: "",
   name: "",
   category: "",
   subcategory: "",
@@ -43,6 +55,9 @@ const initialFormState = {
   imageUrl: "",
   image: null,
   extraImages: [],
+  hasVariations: false,
+  allowMultipleVariations: false,
+  variations: [],
 };
 
 const MAX_EXTRA_IMAGES = 8;
@@ -149,9 +164,22 @@ const AdminProducts = () => {
 
       const categoryId = product?.category?._id || product?.category || "";
       const subcategoryId = product?.subcategory?._id || product?.subcategory || "";
+      const variations = Array.isArray(product?.variations)
+        ? product.variations.map((v) => ({
+            _id: v?._id || "",
+            sku: v?.sku || "",
+            name: v?.name || "",
+            description: v?.description || "",
+            colour: v?.colour || "",
+            price: v?.price != null ? String(v.price) : "",
+            imageUrl: v?.imageUrl || "",
+            image: null,
+          }))
+        : [];
 
       setEditingProductId(productId);
       setProductForm({
+        sku: product?.sku || "",
         name: product?.name || "",
         category: categoryId,
         subcategory: subcategoryId,
@@ -166,6 +194,9 @@ const AdminProducts = () => {
         })(),
         image: null,
         extraImages: [],
+        hasVariations: Boolean(product?.hasVariations),
+        allowMultipleVariations: variations.length > 1,
+        variations: variations.length ? variations : product?.hasVariations ? [emptyVariation()] : [],
       });
       setExistingImageUrl(product?.imageUrl || product?.image || "");
       setExistingExtraImages(Array.isArray(product?.images) ? product.images : []);
@@ -180,7 +211,7 @@ const AdminProducts = () => {
   };
 
   const handleChange = (e) => {
-    const { name, value, files } = e.target;
+    const { name, value, files, type, checked } = e.target;
     if (name === "image") {
       setProductForm((prev) => ({ ...prev, image: files?.[0] || null }));
       return;
@@ -197,7 +228,52 @@ const AdminProducts = () => {
       return;
     }
 
+    if (name === "hasVariations") {
+      setProductForm((prev) => ({
+        ...prev,
+        hasVariations: checked,
+        allowMultipleVariations: checked ? true : false,
+        variations: checked
+          ? prev.variations.length >= 2
+            ? prev.variations
+            : [emptyVariation(), emptyVariation()]
+          : [],
+      }));
+      return;
+    }
+
+    if (name === "allowMultipleVariations") {
+      setProductForm((prev) => ({
+        ...prev,
+        allowMultipleVariations: checked,
+        variations: !checked && prev.variations.length > 1 ? [prev.variations[0]] : prev.variations,
+      }));
+      return;
+    }
+
     setProductForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleVariationChange = (index, field, value) => {
+    setProductForm((prev) => {
+      const next = [...prev.variations];
+      next[index] = { ...next[index], [field]: value };
+      return { ...prev, variations: next };
+    });
+  };
+
+  const addVariation = () => {
+    setProductForm((prev) => ({
+      ...prev,
+      variations: [...prev.variations, emptyVariation()],
+    }));
+  };
+
+  const removeVariation = (index) => {
+    setProductForm((prev) => ({
+      ...prev,
+      variations: prev.variations.filter((_, i) => i !== index),
+    }));
   };
 
   const validateForm = () => {
@@ -246,11 +322,37 @@ const AdminProducts = () => {
       return false;
     }
 
+    if (productForm.hasVariations) {
+      if (!productForm.variations.length) {
+        alert("Add at least one variation when variations are enabled.");
+        return false;
+      }
+      for (let i = 0; i < productForm.variations.length; i += 1) {
+        const v = productForm.variations[i];
+        if (!v.colour?.trim()) {
+          alert(`Variation ${i + 1}: colour is required.`);
+          return false;
+        }
+        if (v.price !== "" && v.price != null) {
+          const vp = Number(v.price);
+          if (!Number.isFinite(vp) || vp < 0) {
+            alert(`Variation ${i + 1}: price must be a number ≥ 0.`);
+            return false;
+          }
+        }
+        if (v.image && !fileTypeOk(v.image)) {
+          alert(`Variation ${i + 1}: image must be jpeg, jpg, png, or webp.`);
+          return false;
+        }
+      }
+    }
+
     return true;
   };
 
   const buildFormData = () => {
     const formData = new FormData();
+    formData.append("sku", String(productForm.sku || "").trim());
     formData.append("name", productForm.name.trim());
     formData.append("category", String(productForm.category).trim());
     const sub = String(productForm.subcategory || "").trim();
@@ -262,6 +364,7 @@ const AdminProducts = () => {
     formData.append("description", String(productForm.description || "").trim());
     formData.append("qty", productForm.qty !== "" && productForm.qty != null ? String(productForm.qty) : "0");
     formData.append("gstRate", String(productForm.gstRate));
+    formData.append("hasVariations", productForm.hasVariations ? "true" : "false");
 
     if (productForm.image) {
       formData.append("image", productForm.image);
@@ -273,9 +376,33 @@ const AdminProducts = () => {
     }
 
     const extras = Array.isArray(productForm.extraImages) ? productForm.extraImages : [];
-    extras.slice(0, MAX_EXTRA_IMAGES).forEach((file) => {
+    const extraFiles = extras.slice(0, MAX_EXTRA_IMAGES);
+    extraFiles.forEach((file) => {
       formData.append("images", file);
     });
+    formData.append("extraImageCount", String(extraFiles.length));
+
+    const variationPayload = [];
+    let variationImageIndex = 0;
+    (productForm.hasVariations ? productForm.variations : []).forEach((v) => {
+      const entry = {
+        _id: v._id || undefined,
+        sku: String(v.sku || "").trim(),
+        name: String(v.name || "").trim(),
+        description: String(v.description || "").trim(),
+        colour: String(v.colour || "").trim(),
+        imageUrl: v.image ? "" : String(v.imageUrl || "").trim(),
+        price: v.price !== "" && v.price != null ? String(v.price) : "",
+      };
+      if (v.image) {
+        entry.imageIndex = variationImageIndex;
+        // Use `images` (not variationImages) so Multer on older servers accepts the upload.
+        formData.append("images", v.image);
+        variationImageIndex += 1;
+      }
+      variationPayload.push(entry);
+    });
+    formData.append("variations", JSON.stringify(variationPayload));
 
     return formData;
   };
@@ -360,6 +487,7 @@ const AdminProducts = () => {
               const id = item?._id || item?.id;
               const categoryName = item?.category?.name || "N/A";
               const subcategoryName = item?.subcategory?.name || "N/A";
+              const variationCount = Array.isArray(item?.variations) ? item.variations.length : 0;
               return (
                 <div key={id} className="bg-white border border-gray-200 rounded-xl p-3">
                   <div className="w-full h-44 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center p-3">
@@ -376,9 +504,15 @@ const AdminProducts = () => {
 
                   <div className="mt-3">
                     <p className="font-semibold text-gray-800 truncate">{item?.name}</p>
+                    {item?.sku && (
+                      <p className="text-xs text-gray-400 mt-0.5">SKU: {item.sku}</p>
+                    )}
                     <p className="text-xs text-gray-500 mt-1">Category: {categoryName}</p>
                     <p className="text-xs text-gray-500">Subcategory: {subcategoryName}</p>
                     <p className="text-xs text-gray-500">GST: {item?.gstRate}%</p>
+                    {item?.hasVariations && variationCount > 0 && (
+                      <p className="text-xs text-indigo-600">{variationCount} variation(s)</p>
+                    )}
                     <p className="text-sm font-semibold mt-1">Rs. {item?.price}</p>
                   </div>
 
@@ -405,8 +539,8 @@ const AdminProducts = () => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl p-6">
             <div className="flex justify-between items-center mb-5">
               <h3 className="text-xl font-semibold text-gray-800">
                 {editingProductId ? "Edit Product" : "Create Product"}
@@ -422,22 +556,34 @@ const AdminProducts = () => {
               </button>
             </div>
 
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input
+                name="sku"
+                value={productForm.sku}
+                onChange={handleChange}
+                placeholder="SKU (manual entry)"
+                className="border border-gray-300 p-2 rounded-lg outline-none"
+              />
               <input
                 name="name"
                 value={productForm.name}
                 onChange={handleChange}
-                placeholder="Name *"
+                placeholder="Product Title *"
                 className="border border-gray-300 p-2 rounded-lg outline-none"
               />
               <input
                 name="colour"
                 value={productForm.colour}
                 onChange={handleChange}
-                placeholder="Colour"
+                placeholder="Product Colour (default colour on storefront)"
                 className="border border-gray-300 p-2 rounded-lg outline-none"
               />
+              {productForm.hasVariations && (
+                <p className="md:col-span-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  For multiple colours, add each colour as a variation below. The product colour above
+                  is also shown as a selectable option on the product page.
+                </p>
+              )}
               <select
                 name="category"
                 value={productForm.category}
@@ -476,7 +622,7 @@ const AdminProducts = () => {
                 name="price"
                 value={productForm.price}
                 onChange={handleChange}
-                placeholder="Price *"
+                placeholder="Product Price *"
                 className="border border-gray-300 p-2 rounded-lg outline-none"
               />
               <input
@@ -506,14 +652,14 @@ const AdminProducts = () => {
                   value={productForm.description}
                   onChange={handleChange}
                   rows="3"
-                  placeholder="Description"
+                  placeholder="Product Description"
                   className="w-full border border-gray-300 p-2 rounded-lg outline-none resize-none"
                 />
               </div>
 
               <div className="md:col-span-2">
                 <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-3 cursor-pointer hover:bg-gray-50 transition">
-                  <span className="text-gray-500 text-sm">Main image file (max 1) — jpeg, jpg, png, webp</span>
+                  <span className="text-gray-500 text-sm">Product Image — jpeg, jpg, png, webp (auto-optimized on upload)</span>
                   <input
                     type="file"
                     name="image"
@@ -558,6 +704,124 @@ const AdminProducts = () => {
                   </p>
                 )}
               </div>
+
+              {/* Variations section */}
+              <div className="md:col-span-2 border-t border-gray-200 pt-4 mt-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="hasVariations"
+                    checked={productForm.hasVariations}
+                    onChange={handleChange}
+                    className="rounded"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Does this product have variations?
+                  </span>
+                </label>
+
+                {productForm.hasVariations && (
+                  <div className="mt-3 space-y-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="allowMultipleVariations"
+                        checked={productForm.allowMultipleVariations}
+                        onChange={handleChange}
+                        className="rounded"
+                      />
+                      <span className="text-sm text-gray-600">Add Multiple Variations</span>
+                    </label>
+
+                    {productForm.variations.map((variation, index) => (
+                      <div
+                        key={variation._id || `var-${index}`}
+                        className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-gray-700">
+                            Variation {index + 1}
+                          </p>
+                          {productForm.allowMultipleVariations && productForm.variations.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeVariation(index)}
+                              className="text-xs text-red-600 hover:underline"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <input
+                            value={variation.sku}
+                            onChange={(e) => handleVariationChange(index, "sku", e.target.value)}
+                            placeholder="SKU (manual entry)"
+                            className="border border-gray-300 p-2 rounded-lg outline-none text-sm bg-white"
+                          />
+                          <input
+                            value={variation.colour}
+                            onChange={(e) => handleVariationChange(index, "colour", e.target.value)}
+                            placeholder="Colour *"
+                            className="border border-gray-300 p-2 rounded-lg outline-none text-sm bg-white"
+                          />
+                          <input
+                            value={variation.name}
+                            onChange={(e) => handleVariationChange(index, "name", e.target.value)}
+                            placeholder="Title (optional, if different)"
+                            className="border border-gray-300 p-2 rounded-lg outline-none text-sm bg-white"
+                          />
+                          <input
+                            type="number"
+                            value={variation.price}
+                            onChange={(e) => handleVariationChange(index, "price", e.target.value)}
+                            placeholder="Price (optional, if different)"
+                            className="border border-gray-300 p-2 rounded-lg outline-none text-sm bg-white"
+                          />
+                          <div className="md:col-span-2">
+                            <textarea
+                              value={variation.description}
+                              onChange={(e) => handleVariationChange(index, "description", e.target.value)}
+                              rows="2"
+                              placeholder="Description (optional, if different)"
+                              className="w-full border border-gray-300 p-2 rounded-lg outline-none resize-none text-sm bg-white"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="flex flex-col items-center justify-center border border-dashed border-gray-300 rounded-lg p-2 cursor-pointer hover:bg-white transition bg-white">
+                              <span className="text-gray-500 text-xs">Variation Image</span>
+                              <input
+                                type="file"
+                                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                                onChange={(e) =>
+                                  handleVariationChange(index, "image", e.target.files?.[0] || null)
+                                }
+                                className="hidden"
+                              />
+                            </label>
+                            {variation.imageUrl && !variation.image && (
+                              <p className="text-xs text-gray-500 mt-1">Using existing variation image</p>
+                            )}
+                            {variation.image && (
+                              <p className="text-xs text-emerald-600 mt-1">{variation.image.name}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {productForm.allowMultipleVariations && (
+                      <button
+                        type="button"
+                        onClick={addVariation}
+                        className="text-sm text-indigo-600 hover:underline font-medium"
+                      >
+                        + Add Another Variation
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 mt-5">
@@ -585,4 +849,4 @@ const AdminProducts = () => {
   );
 };
 
-export default AdminProducts
+export default AdminProducts;

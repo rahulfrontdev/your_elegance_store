@@ -58,12 +58,7 @@ const AdminLayout = () => {
         {/* Bottom */}
         <div className="p-4 space-y-3 border-t border-gray-800">
 
-          {/* <Link
-            to="/"
-            className="block rounded-lg px-4 py-2 text-center text-sm font-medium border border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white transition"
-          >
-            View Store
-          </Link> */}
+          {/* 1 */}
 
           <button
             onClick={() => {

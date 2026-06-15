@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const Category = require('../models/Category');
-const cloudinary = require('../utils/cloudinary');
+const { uploadOptimizedImage } = require('../utils/imageOptimizer');
 const { enrichProductsWithCampaignPricing } = require('../services/pricingEngine');
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
@@ -92,9 +92,127 @@ const normalizeCategoryQueryValues = (rawCategory) => {
 const validateImageMimeType = (file) =>
   !file || allowedImageMimeTypes.includes(file.mimetype);
 
-const uploadProductImages = async (files = {}) => {
-  const mainImageFile = files?.image?.[0];
-  const extraImageFiles = files?.images || [];
+/** Normalise multer output from `.any()` (array) or `.fields()` (object). */
+const groupUploadedFiles = (files) => {
+  const empty = { image: [], images: [], variationImages: [] };
+  if (!files) return empty;
+
+  if (Array.isArray(files)) {
+    return {
+      image: files.filter((f) => f.fieldname === 'image').slice(0, 1),
+      images: files.filter((f) => f.fieldname === 'images').slice(0, 58),
+      variationImages: files.filter((f) => f.fieldname === 'variationImages').slice(0, 50),
+    };
+  }
+
+  return {
+    image: (files.image || []).slice(0, 1),
+    images: (files.images || []).slice(0, 58),
+    variationImages: (files.variationImages || []).slice(0, 50),
+  };
+};
+
+/** Split combined `images` uploads: extras first, then variation images (see extraImageCount). */
+const splitGalleryFiles = (groupedFiles, extraImageCount, hasVariations = false) => {
+  const allImages = groupedFiles?.images || [];
+  let parsedExtra;
+  if (extraImageCount !== undefined && extraImageCount !== null && extraImageCount !== '') {
+    parsedExtra = Number(extraImageCount);
+  } else if (hasVariations) {
+    parsedExtra = 0;
+  } else {
+    parsedExtra = allImages.length;
+  }
+  const extraCount = Number.isNaN(parsedExtra)
+    ? hasVariations
+      ? 0
+      : allImages.length
+    : Math.min(Math.max(0, parsedExtra), allImages.length);
+
+  return {
+    extraImageFiles: allImages.slice(0, extraCount),
+    variationImageFiles: [
+      ...allImages.slice(extraCount),
+      ...(groupedFiles?.variationImages || []),
+    ],
+  };
+};
+
+const parseVariationsPayload = (raw) => {
+  if (raw === undefined || raw === null || raw === '') return [];
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return null;
+  }
+};
+
+const normalizeVariationEntry = (entry, imageUrl = '') => {
+  const priceRaw = entry?.price;
+  let price = null;
+  if (priceRaw !== undefined && priceRaw !== null && priceRaw !== '') {
+    const parsed = Number(priceRaw);
+    if (!Number.isNaN(parsed) && parsed >= 0) price = parsed;
+  }
+
+  return {
+    _id: entry?._id && isValidObjectId(entry._id) ? entry._id : undefined,
+    sku: String(entry?.sku || '').trim(),
+    name: String(entry?.name || '').trim(),
+    description: String(entry?.description || '').trim(),
+    colour: String(entry?.colour || '').trim(),
+    imageUrl: imageUrl || String(entry?.imageUrl || '').trim(),
+    price,
+  };
+};
+
+const validateVariations = (hasVariations, variations) => {
+  if (!hasVariations) return { ok: true, variations: [] };
+
+  if (!Array.isArray(variations) || variations.length === 0) {
+    return { ok: false, message: 'At least one variation is required when variations are enabled' };
+  }
+
+  for (let i = 0; i < variations.length; i += 1) {
+    const v = variations[i];
+    if (!v.colour) {
+      return { ok: false, message: `Variation ${i + 1}: colour is required` };
+    }
+  }
+
+  return { ok: true, variations };
+};
+
+const resolveVariationImageUrls = async (variationsInput, variationImageFiles = []) => {
+  const resolved = [];
+
+  for (let i = 0; i < variationsInput.length; i += 1) {
+    const entry = variationsInput[i];
+    let imageUrl = String(entry?.imageUrl || '').trim();
+
+    const imageIndex = entry?.imageIndex;
+    if (imageIndex !== undefined && imageIndex !== null && imageIndex !== '') {
+      const idx = Number(imageIndex);
+      const file = variationImageFiles[idx];
+      if (file) {
+        if (!validateImageMimeType(file)) {
+          return { error: `Variation ${i + 1} image must be jpeg, jpg, png, or webp` };
+        }
+        imageUrl = await uploadOptimizedImage(file.path);
+      }
+    }
+
+    resolved.push(normalizeVariationEntry(entry, imageUrl));
+  }
+
+  return { variations: resolved };
+};
+
+const uploadProductImages = async (rawFiles, extraImageCount = 0, hasVariations = false) => {
+  const files = groupUploadedFiles(rawFiles);
+  const { extraImageFiles } = splitGalleryFiles(files, extraImageCount, hasVariations);
+  const mainImageFile = files.image[0];
 
   if (!validateImageMimeType(mainImageFile)) {
     return { error: 'Main image must be jpeg, jpg, png, or webp' };
@@ -105,16 +223,14 @@ const uploadProductImages = async (files = {}) => {
 
   let mainImageUrl;
   if (mainImageFile) {
-    const uploaded = await cloudinary.uploader.upload(mainImageFile.path);
-    mainImageUrl = uploaded.secure_url;
+    mainImageUrl = await uploadOptimizedImage(mainImageFile.path);
   }
 
   let extraImageUrls = [];
   if (extraImageFiles.length > 0) {
-    const uploadedExtras = await Promise.all(
-      extraImageFiles.map((file) => cloudinary.uploader.upload(file.path))
+    extraImageUrls = await Promise.all(
+      extraImageFiles.map((file) => uploadOptimizedImage(file.path))
     );
-    extraImageUrls = uploadedExtras.map((item) => item.secure_url);
   }
 
   return { mainImageUrl, extraImageUrls };
@@ -133,8 +249,22 @@ const createProduct = async (req, res) => {
       category,
       subcategory,
       imageUrl,
+      sku,
+      hasVariations,
+      variations: variationsRaw,
+      extraImageCount,
     } = req.body;
     const normalizedSubcategory = normalizeOptionalObjectId(subcategory);
+    const hasVariationsFlag =
+      hasVariations === true ||
+      hasVariations === 'true' ||
+      hasVariations === 1 ||
+      hasVariations === '1';
+
+    const parsedVariationsRaw = parseVariationsPayload(variationsRaw);
+    if (parsedVariationsRaw === null) {
+      return res.status(400).json({ message: 'Invalid variations JSON' });
+    }
 
     if (!name || price == null || !category) {
       return res.status(400).json({
@@ -161,12 +291,36 @@ const createProduct = async (req, res) => {
       return res.status(check.status).json({ message: check.message });
     }
 
-    const uploadedImages = await uploadProductImages(req.files);
+    const groupedFiles = groupUploadedFiles(req.files);
+    const { variationImageFiles } = splitGalleryFiles(
+      groupedFiles,
+      extraImageCount,
+      hasVariationsFlag
+    );
+    const uploadedImages = await uploadProductImages(
+      groupedFiles,
+      extraImageCount,
+      hasVariationsFlag
+    );
     if (uploadedImages.error) {
       return res.status(400).json({ message: uploadedImages.error });
     }
 
+    const resolvedVariations = await resolveVariationImageUrls(
+      hasVariationsFlag ? parsedVariationsRaw : [],
+      variationImageFiles
+    );
+    if (resolvedVariations.error) {
+      return res.status(400).json({ message: resolvedVariations.error });
+    }
+
+    const variationCheck = validateVariations(hasVariationsFlag, resolvedVariations.variations);
+    if (!variationCheck.ok) {
+      return res.status(400).json({ message: variationCheck.message });
+    }
+
     const product = await Product.create({
+      sku: String(sku || '').trim(),
       name,
       description,
       colour,
@@ -177,6 +331,8 @@ const createProduct = async (req, res) => {
       subcategory: normalizedSubcategory,
       imageUrl: uploadedImages.mainImageUrl || imageUrl || '',
       images: uploadedImages.extraImageUrls,
+      hasVariations: hasVariationsFlag,
+      variations: variationCheck.variations,
       createdBy: req.user?._id,
       updatedBy: req.user?._id,
     });
@@ -379,15 +535,60 @@ const updateProduct = async (req, res) => {
       category,
       subcategory,
       imageUrl,
+      sku,
+      hasVariations,
+      variations: variationsRaw,
+      extraImageCount,
     } = req.body;
     const normalizedSubcategory = normalizeOptionalObjectId(subcategory);
+    const groupedFiles = groupUploadedFiles(req.files);
 
     const updates = {};
     if (name !== undefined) updates.name = name;
     if (description !== undefined) updates.description = description;
     if (colour !== undefined) updates.colour = colour;
+    if (sku !== undefined) updates.sku = String(sku || '').trim();
     if (category !== undefined) updates.category = category;
     if (subcategory !== undefined) updates.subcategory = normalizedSubcategory;
+
+    if (hasVariations !== undefined) {
+      updates.hasVariations =
+        hasVariations === true ||
+        hasVariations === 'true' ||
+        hasVariations === 1 ||
+        hasVariations === '1';
+    }
+
+    const nextHasVariations =
+      updates.hasVariations !== undefined ? updates.hasVariations : product.hasVariations;
+
+    if (variationsRaw !== undefined) {
+      const parsedVariationsRaw = parseVariationsPayload(variationsRaw);
+      if (parsedVariationsRaw === null) {
+        return res.status(400).json({ message: 'Invalid variations JSON' });
+      }
+
+      const { variationImageFiles } = splitGalleryFiles(
+        groupedFiles,
+        extraImageCount,
+        nextHasVariations
+      );
+      const resolvedVariations = await resolveVariationImageUrls(
+        parsedVariationsRaw,
+        variationImageFiles
+      );
+      if (resolvedVariations.error) {
+        return res.status(400).json({ message: resolvedVariations.error });
+      }
+
+      const variationCheck = validateVariations(nextHasVariations, resolvedVariations.variations);
+      if (!variationCheck.ok) {
+        return res.status(400).json({ message: variationCheck.message });
+      }
+      updates.variations = variationCheck.variations;
+    } else if (updates.hasVariations === false) {
+      updates.variations = [];
+    }
 
     if (price !== undefined) {
       const parsedPrice = parseNumber(price);
@@ -411,7 +612,11 @@ const updateProduct = async (req, res) => {
       updates.gstRate = parsedGst;
     }
     if (imageUrl !== undefined) updates.imageUrl = imageUrl;
-    const uploadedImages = await uploadProductImages(req.files);
+    const uploadedImages = await uploadProductImages(
+      groupedFiles,
+      extraImageCount,
+      nextHasVariations
+    );
     if (uploadedImages.error) {
       return res.status(400).json({ message: uploadedImages.error });
     }

@@ -5,6 +5,15 @@ const notFound = (req, res, next) => {
 };
 
 const errorHandler = (err, req, res, next) => {
+  if (err?.name === 'MulterError') {
+    const fieldHint = err.field ? ` (field: ${err.field})` : '';
+    return res.status(400).json({
+      success: false,
+      message: `${err.message || 'Upload failed'}${fieldHint}`,
+      stack: process.env.NODE_ENV === 'production' ? undefined : err.stack,
+    });
+  }
+
   const statusCode =
     err.statusCode && Number.isInteger(err.statusCode)
       ? err.statusCode

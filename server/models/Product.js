@@ -2,6 +2,46 @@ const mongoose = require("mongoose");
 
 const ALLOWED_GST_RATES = [3, 12, 18];
 
+const variationSchema = new mongoose.Schema(
+  {
+    sku: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 64,
+    },
+    name: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 120,
+    },
+    description: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 2000,
+    },
+    colour: {
+      type: String,
+      trim: true,
+      required: [true, "Variation colour is required"],
+      maxlength: 40,
+    },
+    imageUrl: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    price: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+  },
+  { _id: true }
+);
+
 const reviewSchema = new mongoose.Schema(
   {
     user: {
@@ -32,6 +72,12 @@ const reviewSchema = new mongoose.Schema(
 
 const productSchema = new mongoose.Schema(
   {
+    sku: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 64,
+    },
     name: {
       type: String,
       required: [true, "Product name is required"],
@@ -73,6 +119,14 @@ const productSchema = new mongoose.Schema(
     },
     images: {
       type: [String],
+      default: [],
+    },
+    hasVariations: {
+      type: Boolean,
+      default: false,
+    },
+    variations: {
+      type: [variationSchema],
       default: [],
     },
     category: {
