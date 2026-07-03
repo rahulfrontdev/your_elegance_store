@@ -1,35 +1,79 @@
 import axiosInstance, { publicAxiosInstance } from './axiosInstance'
 
-/**
- * Admin: Bearer JWT via axiosInstance.
- * Public home carousel: GET /carousel (active slides; adjust if your backend uses e.g. /carousel/active).
- */
+const apiBaseUrl = () =>
+  String(import.meta.env.VITE_API_BASE_URL || axiosInstance.defaults.baseURL || 'http://localhost:8000/api').replace(
+    /\/+$/,
+    ''
+  )
 
-export const adminFetchAllCarouselSlides = () =>
-  axiosInstance.get('/carousel/admin/all')
+async function readJsonBody(res) {
+  const text = await res.text()
+  if (!text) return {}
+  try {
+    return JSON.parse(text)
+  } catch {
+    return { message: text.slice(0, 300) }
+  }
+}
 
-export const adminFetchCarouselSlideById = (id) =>
-  axiosInstance.get(`/carousel/admin/${id}`)
+async function multipartCarouselRequest(method, path, formData, { onProgress } = {}) {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : ''
+  const url = `${apiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`
 
-/** @param {FormData} formData — must include `image` (File) for create */
-export const adminCreateCarouselSlide = (formData) =>
-  axiosInstance.post('/carousel', formData, {
-    headers: formData instanceof FormData ? { 'Content-Type': false } : undefined,
-  })
+  if (typeof onProgress === 'function' && typeof XMLHttpRequest !== 'undefined') {
+    const data = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open(method, url)
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return
+        onProgress(Math.round((event.loaded / event.total) * 100))
+      }
+      xhr.onload = () => {
+        let parsed = {}
+        try {
+          parsed = xhr.responseText ? JSON.parse(xhr.responseText) : {}
+        } catch {
+          parsed = { message: xhr.responseText?.slice(0, 300) || xhr.statusText }
+        }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          if (parsed && parsed.success === false) {
+            reject(new Error(parsed.message || 'Save failed'))
+            return
+          }
+          resolve(parsed)
+          return
+        }
+        reject(new Error(parsed?.message || parsed?.error || xhr.statusText || 'Upload failed'))
+      }
+      xhr.onerror = () => reject(new Error('Network error during upload'))
+      xhr.send(formData)
+    })
+    return { data, status: 200 }
+  }
 
-/** @param {string} id @param {FormData} formData — optional `image` (File) */
-export const adminUpdateCarouselSlide = (id, formData) =>
-  axiosInstance.put(`/carousel/${id}`, formData, {
-    headers: formData instanceof FormData ? { 'Content-Type': false } : undefined,
-  })
+  const headers = {}
+  if (token) headers.Authorization = `Bearer ${token}`
+  const res = await fetch(url, { method, headers, body: formData })
+  const data = await readJsonBody(res)
+  if (!res.ok) {
+    throw new Error(data?.message || data?.error || res.statusText || 'Upload failed')
+  }
+  return { data, status: res.status }
+}
 
-export const adminDeleteCarouselSlide = (id) =>
-  axiosInstance.delete(`/carousel/${id}`)
+export const adminFetchAllCarouselSlides = () => axiosInstance.get('/carousel/admin/all')
 
-/** Storefront: no auth. Default `GET /carousel` (under `VITE_API_BASE_URL`). Override with `VITE_PUBLIC_CAROUSEL_PATH` e.g. `carousel/active`. */
-const publicCarouselPath = (
-  import.meta.env.VITE_PUBLIC_CAROUSEL_PATH || 'carousel'
-).replace(/^\/+/, '')
+export const adminFetchCarouselSlideById = (id) => axiosInstance.get(`/carousel/admin/${id}`)
 
-export const fetchPublicCarouselSlides = () =>
-  publicAxiosInstance.get(publicCarouselPath)
+export const adminCreateCarouselSlide = (formData, options) =>
+  multipartCarouselRequest('POST', '/carousel', formData, options)
+
+export const adminUpdateCarouselSlide = (id, formData, options) =>
+  multipartCarouselRequest('PUT', `/carousel/${id}`, formData, options)
+
+export const adminDeleteCarouselSlide = (id) => axiosInstance.delete(`/carousel/${id}`)
+
+const publicCarouselPath = (import.meta.env.VITE_PUBLIC_CAROUSEL_PATH || 'carousel').replace(/^\/+/, '')
+
+export const fetchPublicCarouselSlides = () => publicAxiosInstance.get(publicCarouselPath)

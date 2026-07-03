@@ -9,7 +9,7 @@ const discountSchema = new mongoose.Schema(
     discountName: { type: String, required: true, trim: true, maxlength: 200 },
     discountCode: {
       type: String,
-      default: '',
+      default: undefined,
       trim: true,
       uppercase: true,
       maxlength: 40,
@@ -64,7 +64,9 @@ discountSchema.index({ applicableOn: 1, status: 1 });
 discountSchema.index({ festivalTag: 1 });
 
 discountSchema.pre('save', function normalizeCode(next) {
-  if (this.discountCode) {
+  if (this.discountCode != null && String(this.discountCode).trim() === '') {
+    this.discountCode = undefined;
+  } else if (this.discountCode) {
     this.discountCode = String(this.discountCode).trim().toUpperCase();
   }
   next();

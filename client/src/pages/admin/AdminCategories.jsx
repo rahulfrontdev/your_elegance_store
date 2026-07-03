@@ -9,6 +9,7 @@ import {
   adminFetchRootCategories,
   adminUpdateCategory,
 } from "../../api/adminApi";
+import UploadProgressBar from "../../components/admin/UploadProgressBar";
 
 const AdminCategories = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,6 +27,8 @@ const AdminCategories = () => {
   const [loadingChildrenByParentId, setLoadingChildrenByParentId] = useState({});
   const [statusAction, setStatusAction] = useState({ id: "", type: "" });
   const [editingCategoryId, setEditingCategoryId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     fetchAllCategories();
@@ -217,6 +220,8 @@ const AdminCategories = () => {
 
   const handleSubmit = async () => {
     try {
+      setSaving(true);
+      setUploadProgress(0);
       const formData = new FormData();
       formData.append("name", category.name);
       formData.append("description", category.description);
@@ -233,7 +238,7 @@ const AdminCategories = () => {
       if (editingCategoryId) {
         await adminUpdateCategory(editingCategoryId, formData);
       } else {
-        await adminCreateCategoryUpload(formData);
+        await adminCreateCategoryUpload(formData, { onProgress: setUploadProgress });
       }
 
       setIsOpen(false);
@@ -241,6 +246,9 @@ const AdminCategories = () => {
       await refreshCategoryData();
     } catch (error) {
       console.error("Error saving category:", error);
+    } finally {
+      setSaving(false);
+      setUploadProgress(0);
     }
   };
 
@@ -469,6 +477,8 @@ const AdminCategories = () => {
                 </label>
               </div>
 
+              <UploadProgressBar progress={uploadProgress} label="Uploading category image…" />
+
               <div className="flex justify-end gap-3 mt-4">
                 <button
                   onClick={() => {
@@ -481,9 +491,10 @@ const AdminCategories = () => {
                 </button>
                 <button
                   onClick={handleSubmit}
-                  className="bg-black text-white px-4 py-2 rounded-lg"
+                  disabled={saving}
+                  className="bg-black text-white px-4 py-2 rounded-lg disabled:opacity-60"
                 >
-                  {editingCategoryId ? "Update" : "Save"}
+                  {saving ? "Uploading…" : editingCategoryId ? "Update" : "Save"}
                 </button>
               </div>
             </div>

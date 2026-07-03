@@ -3,40 +3,132 @@
 /* Tell Tailwind where to scan for class names */
 @source "./**/*.{js,jsx,ts,tsx}";
 
-/* Home hero carousel heights (match Promotional.jsx) */
+html,
+body,
+#root {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+.scrollbar-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* Home hero carousel */
 .home-hero {
-  height: 635px;
+  height: min(72vh, 635px);
+  max-height: 100vh;
+  width: 100%;
+  background: #fff;
 }
 
-@media (max-width: 1023px) {
-  .home-hero {
-    height: 520px;
-  }
+.home-hero__slide {
+  height: min(72vh, 635px);
+  max-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  overflow: hidden;
 }
 
-@media (max-width: 639px) {
-  .home-hero {
-    height: 440px;
-  }
+.home-hero__slide--loading {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: #e5e7eb;
+}
+
+.home-hero__slide--clickable {
+  cursor: pointer;
+}
+
+.home-hero__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  max-height: min(72vh, 635px);
+  object-fit: contain;
+  object-position: center;
+  background: #fff;
 }
 
 .home-hero .carousel-root,
 .home-hero .carousel,
+.home-hero .carousel.carousel-slider,
 .home-hero .carousel .slider-wrapper,
 .home-hero .carousel .slider,
 .home-hero .carousel .slide {
-  height: 100%;
+  height: 100% !important;
+  min-height: min(72vh, 635px);
   margin: 0;
+}
+
+.home-hero .carousel .slider-wrapper {
+  overflow: hidden;
+}
+
+.home-hero .carousel .slide {
+  background: #fff;
+}
+
+.home-hero .carousel img {
+  pointer-events: auto;
 }
 
 .home-hero .carousel .control-dots {
   margin: 0;
-  padding: 0.2rem 0 0.1rem;
+  padding: 0.35rem 0 0.5rem;
+  z-index: 2;
+}
+
+@media (max-width: 1023px) {
+  .home-hero,
+  .home-hero__slide,
+  .home-hero .carousel .slide {
+    height: min(68vh, 520px) !important;
+    min-height: min(68vh, 520px);
+  }
+}
+
+@media (max-width: 639px) {
+  .home-hero,
+  .home-hero__slide,
+  .home-hero .carousel .slide {
+    height: min(62vh, 440px) !important;
+    min-height: min(62vh, 440px);
+  }
 }
 
 .instagram-reel-embed {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: #fafafa;
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 9 / 16;
+  max-height: min(32rem, 70vh);
+  margin: 0 auto;
+  overflow: hidden;
+  background: #000;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.instagram-reel-embed::-webkit-scrollbar {
+  display: none;
+}
+
+.instagram-reel-embed__iframe {
+  position: absolute;
+  top: -48px;
+  left: 0;
+  width: 100%;
+  height: calc(100% + 96px);
+  border: 0;
+  overflow: hidden;
+  background: #000;
 }

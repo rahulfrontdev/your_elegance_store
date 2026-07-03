@@ -1,7 +1,10 @@
-import { Link } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { useNavDropdown } from '../../context/NavDropdownContext'
 import useCategoryNavigation from '../../hooks/useCategoryNavigation'
 import CategoryNavDropdown from './CategoryNavDropdown'
+
+const primaryNavLinkClass = ({ isActive }) =>
+  `site-navbar-primary__link${isActive ? ' site-navbar-primary__link--active' : ''}`
 
 const SiteNavbar = () => {
   const categoryNavigation = useCategoryNavigation()
@@ -10,13 +13,13 @@ const SiteNavbar = () => {
   return (
     <nav className="site-navbar-primary" aria-label="Primary navigation">
       <div className="site-navbar-primary__inner">
-        <Link to="/" className="site-navbar-primary__link">
+        <NavLink to="/" end className={primaryNavLinkClass}>
           Home
-        </Link>
+        </NavLink>
 
-        <Link to="/products" className="site-navbar-primary__link">
+        <NavLink to="/products" className={primaryNavLinkClass}>
           Products
-        </Link>
+        </NavLink>
 
         {categoryNavigation.map((category) =>
           category.children.length > 0 ? (
@@ -31,9 +34,9 @@ const SiteNavbar = () => {
               onNavigate={close}
             />
           ) : (
-            <Link key={category.id} to={category.to} className="site-navbar-primary__link">
+            <NavLink key={category.id} to={category.to} className={primaryNavLinkClass}>
               {category.name}
-            </Link>
+            </NavLink>
           )
         )}
       </div>

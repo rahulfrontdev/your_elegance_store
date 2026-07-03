@@ -35,7 +35,7 @@ const ProductCard = ({ product, returnPath = '/products' }) => {
           <img
             src={imageSrc}
             alt={product?.name || 'Product'}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            className="h-full w-full object-contain object-center transition duration-500 group-hover:scale-[1.02]"
           />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-xs text-neutral-400">

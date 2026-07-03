@@ -7,9 +7,13 @@ const notFound = (req, res, next) => {
 const errorHandler = (err, req, res, next) => {
   if (err?.name === 'MulterError') {
     const fieldHint = err.field ? ` (field: ${err.field})` : '';
+    const friendly =
+      err.code === 'LIMIT_FILE_SIZE'
+        ? 'Image is too large. Maximum upload size is 20 MB.'
+        : err.message || 'Upload failed';
     return res.status(400).json({
       success: false,
-      message: `${err.message || 'Upload failed'}${fieldHint}`,
+      message: `${friendly}${fieldHint}`,
       stack: process.env.NODE_ENV === 'production' ? undefined : err.stack,
     });
   }

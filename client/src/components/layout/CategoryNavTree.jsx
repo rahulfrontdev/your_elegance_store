@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 
-const CategoryNavTree = ({ nodes = [], level = 0, onMenuLinkActivate }) => {
+const CategoryNavTree = ({ nodes = [], onMenuLinkActivate }) => {
   const navigate = useNavigate()
 
   const handleLinkActivate = (to) => (event) => {
@@ -10,26 +10,29 @@ const CategoryNavTree = ({ nodes = [], level = 0, onMenuLinkActivate }) => {
     navigate(to)
   }
 
-  return nodes.map((node) => (
-    <div key={node.id} className="category-nav-tree__item">
-      <a
-        href={node.to}
-        className="category-nav-tree__link"
-        style={{ paddingLeft: `${1 + level * 0.85}rem` }}
-        onClick={handleLinkActivate(node.to)}
-      >
-        {level > 0 && <span className="category-nav-tree__branch">-</span>}
-        <span>{node.name}</span>
-      </a>
-      {node.children?.length > 0 && (
-        <CategoryNavTree
-          nodes={node.children}
-          level={level + 1}
-          onMenuLinkActivate={onMenuLinkActivate}
-        />
-      )}
-    </div>
-  ))
+  return (
+    <ul className="category-nav-tree">
+      {nodes.map((node) => {
+        const hasChildren = node.children?.length > 0
+        return (
+          <li
+            key={node.id}
+            className={`category-nav-tree__item${hasChildren ? ' category-nav-tree__item--has-children' : ''}`}
+          >
+            <a href={node.to} className="category-nav-tree__link" onClick={handleLinkActivate(node.to)}>
+              <span className="category-nav-tree__label">{node.name}</span>
+              {hasChildren ? <span className="category-nav-tree__arrow" aria-hidden>›</span> : null}
+            </a>
+            {hasChildren ? (
+              <div className="category-nav-tree__submenu" role="menu">
+                <CategoryNavTree nodes={node.children} onMenuLinkActivate={onMenuLinkActivate} />
+              </div>
+            ) : null}
+          </li>
+        )
+      })}
+    </ul>
+  )
 }
 
 export default CategoryNavTree

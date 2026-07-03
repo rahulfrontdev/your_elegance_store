@@ -69,7 +69,7 @@ const Insta = () => {
   }
 
   return (
-    <section className="px-1 py-5 sm:px-2 sm:py-6 lg:px-2">
+    <section className="overflow-x-clip px-1 py-5 sm:px-2 sm:py-6 lg:px-2">
       <div className="mx-auto max-w-8xl">
         <div className="mb-4 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-neutral-500">
@@ -83,7 +83,7 @@ const Insta = () => {
         {status === 'loading' ? (
           <p className="py-8 text-center text-sm text-neutral-500">Loading reels...</p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 overflow-x-clip sm:grid-cols-2 lg:grid-cols-3">
             {activeReels.map((reel) => (
               <article
                 key={pickId(reel)}

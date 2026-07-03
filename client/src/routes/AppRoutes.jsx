@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import MainLayout from '../components/layout/MainLayout'
 import AccountPage from '../pages/account/AccountPage'
@@ -25,14 +26,20 @@ import RequireAdmin from '../components/admin/RequireAdmin'
 import RequireAuth from '../components/auth/RequireAuth'
 import RequireCustomer from '../components/auth/RequireCustomer'
 import AdminLayout from '../layouts/AdminLayout'
-import AdminDashboard from '../pages/admin/AdminDashboard'
-import AdminCategories from '../pages/admin/AdminCategories'
-import AdminProducts from '../pages/admin/AdminProducts'
-import AdminUsers from '../pages/admin/AdminUsers'
-import AdminCarousel from '../pages/admin/AdminCarousel'
-import AdminDiscounts from '../pages/admin/AdminDiscounts'
-import AdminCatalogs from '../pages/admin/AdminCatalogs'
-import AdminReels from '../pages/admin/AdminReels'
+
+const AdminDashboard = lazy(() => import('../pages/admin/AdminDashboard'))
+const AdminCategories = lazy(() => import('../pages/admin/AdminCategories'))
+const AdminProducts = lazy(() => import('../pages/admin/AdminProducts'))
+const AdminUsers = lazy(() => import('../pages/admin/AdminUsers'))
+const AdminCarousel = lazy(() => import('../pages/admin/AdminCarousel'))
+const AdminDiscounts = lazy(() => import('../pages/admin/AdminDiscounts'))
+const AdminCatalogs = lazy(() => import('../pages/admin/AdminCatalogs'))
+const AdminReels = lazy(() => import('../pages/admin/AdminReels'))
+const AdminReports = lazy(() => import('../pages/admin/AdminReports'))
+
+const AdminRouteFallback = () => (
+  <div className="flex min-h-[40vh] items-center justify-center text-sm text-neutral-600">Loading admin…</div>
+)
 import ModernCartPage from '../pages/modern/ModernCartPage'
 import ModernCheckoutPage from '../pages/modern/ModernCheckoutPage'
 import ModernAuthPage from '../pages/modern/ModernAuthPage'
@@ -56,14 +63,78 @@ const AppRoutes = () => {
           </RequireAdmin>
         }
       >
-        <Route index element={<AdminDashboard />} />
-        <Route path="categories" element={<AdminCategories />} />
-        <Route path="products" element={<AdminProducts />} />
-        <Route path="users" element={<AdminUsers />} />
-        <Route path="carousel" element={<AdminCarousel />} />
-        <Route path="reels" element={<AdminReels />} />
-        <Route path="discounts" element={<AdminDiscounts />} />
-        <Route path="catalogs" element={<AdminCatalogs />} />
+        <Route
+          index
+          element={
+            <Suspense fallback={<AdminRouteFallback />}>
+              <AdminDashboard />
+            </Suspense>
+          }
+        />
+        <Route
+          path="categories"
+          element={
+            <Suspense fallback={<AdminRouteFallback />}>
+              <AdminCategories />
+            </Suspense>
+          }
+        />
+        <Route
+          path="products"
+          element={
+            <Suspense fallback={<AdminRouteFallback />}>
+              <AdminProducts />
+            </Suspense>
+          }
+        />
+        <Route
+          path="users"
+          element={
+            <Suspense fallback={<AdminRouteFallback />}>
+              <AdminUsers />
+            </Suspense>
+          }
+        />
+        <Route
+          path="carousel"
+          element={
+            <Suspense fallback={<AdminRouteFallback />}>
+              <AdminCarousel />
+            </Suspense>
+          }
+        />
+        <Route
+          path="reels"
+          element={
+            <Suspense fallback={<AdminRouteFallback />}>
+              <AdminReels />
+            </Suspense>
+          }
+        />
+        <Route
+          path="discounts"
+          element={
+            <Suspense fallback={<AdminRouteFallback />}>
+              <AdminDiscounts />
+            </Suspense>
+          }
+        />
+        <Route
+          path="catalogs"
+          element={
+            <Suspense fallback={<AdminRouteFallback />}>
+              <AdminCatalogs />
+            </Suspense>
+          }
+        />
+        <Route
+          path="reports"
+          element={
+            <Suspense fallback={<AdminRouteFallback />}>
+              <AdminReports />
+            </Suspense>
+          }
+        />
       </Route>
       <Route
         element={

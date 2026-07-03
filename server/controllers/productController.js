@@ -199,7 +199,11 @@ const resolveVariationImageUrls = async (variationsInput, variationImageFiles = 
         if (!validateImageMimeType(file)) {
           return { error: `Variation ${i + 1} image must be jpeg, jpg, png, or webp` };
         }
-        imageUrl = await uploadOptimizedImage(file.path);
+        const saved = await uploadOptimizedImage(file);
+        if (saved?.error) {
+          return { error: saved.error };
+        }
+        imageUrl = saved;
       }
     }
 
@@ -223,14 +227,19 @@ const uploadProductImages = async (rawFiles, extraImageCount = 0, hasVariations 
 
   let mainImageUrl;
   if (mainImageFile) {
-    mainImageUrl = await uploadOptimizedImage(mainImageFile.path);
+    const saved = await uploadOptimizedImage(mainImageFile);
+    if (saved?.error) return { error: saved.error };
+    mainImageUrl = saved;
   }
 
   let extraImageUrls = [];
   if (extraImageFiles.length > 0) {
-    extraImageUrls = await Promise.all(
-      extraImageFiles.map((file) => uploadOptimizedImage(file.path))
+    const uploadedExtras = await Promise.all(
+      extraImageFiles.map((file) => uploadOptimizedImage(file))
     );
+    const badExtra = uploadedExtras.find((item) => item?.error);
+    if (badExtra) return { error: badExtra.error };
+    extraImageUrls = uploadedExtras.filter(Boolean);
   }
 
   return { mainImageUrl, extraImageUrls };

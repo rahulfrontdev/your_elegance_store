@@ -71,17 +71,26 @@ const Register = () => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 px-4">
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-white">Create account</h1>
-          <p className="mt-2 text-sm text-slate-300">Join us to explore products and offers.</p>
-        </div>
+    <div className="relative flex min-h-screen items-center justify-center overflow-x-clip px-4 py-6">
+      <img
+        src="/background_image.png"
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+        decoding="async"
+        fetchPriority="low"
+      />
+      <div className="pointer-events-none absolute inset-0 bg-black/25" aria-hidden />
+      <div className="relative z-10 w-full max-w-md">
+        <div className="rounded-2xl border border-neutral-200 bg-white/95 p-6 shadow-2xl backdrop-blur-sm">
+          <div className="mb-6 text-center">
+            <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Create account</h1>
+            <p className="mt-2 text-sm text-neutral-600">Join us to explore products and offers.</p>
+          </div>
 
-        <div className="rounded-2xl border border-white/15 bg-white/10 p-6 shadow-2xl">
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
-              <label htmlFor="name" className="mb-1 block text-xs font-medium text-slate-200">
+              <label htmlFor="name" className="mb-1 block text-xs font-medium text-neutral-800">
                 Name
               </label>
               <input
@@ -98,7 +107,7 @@ const Register = () => {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="mobile" className="mb-1 block text-xs font-medium text-slate-200">
+                <label htmlFor="mobile" className="mb-1 block text-xs font-medium text-neutral-800">
                   Mobile Number
                 </label>
                 <input
@@ -113,7 +122,7 @@ const Register = () => {
                 />
               </div>
               <div>
-                <label htmlFor="email" className="mb-1 block text-xs font-medium text-slate-200">
+                <label htmlFor="email" className="mb-1 block text-xs font-medium text-neutral-800">
                   Email (optional)
                 </label>
                 <input
@@ -131,7 +140,7 @@ const Register = () => {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="password" className="mb-1 block text-xs font-medium text-slate-200">
+                <label htmlFor="password" className="mb-1 block text-xs font-medium text-neutral-800">
                   Password
                 </label>
                 <input
@@ -146,7 +155,7 @@ const Register = () => {
                 />
               </div>
               <div>
-                <label htmlFor="confirmPassword" className="mb-1 block text-xs font-medium text-slate-200">
+                <label htmlFor="confirmPassword" className="mb-1 block text-xs font-medium text-neutral-800">
                   Confirm password
                 </label>
                 <input
@@ -163,7 +172,7 @@ const Register = () => {
             </div>
 
             {error && (
-              <p className="text-xs font-medium text-rose-400" role="alert">
+              <p className="text-xs font-medium text-rose-600" role="alert">
                 {error}
               </p>
             )}
@@ -177,9 +186,9 @@ const Register = () => {
             </button>
           </form>
 
-          <p className="mt-4 text-center text-xs text-slate-300">
+          <p className="mt-4 text-center text-xs text-neutral-600">
             Already have an account?{' '}
-            <Link to="/login" state={{ from: redirectTo }} className="font-semibold text-blue-300 hover:text-blue-200">
+            <Link to="/login" state={{ from: redirectTo }} className="font-semibold text-blue-600 hover:text-blue-700">
               Sign in
             </Link>
           </p>

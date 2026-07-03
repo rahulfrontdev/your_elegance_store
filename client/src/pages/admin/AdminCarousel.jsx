@@ -6,6 +6,7 @@ import {
   adminFetchCarouselSlideById,
   adminUpdateCarouselSlide,
 } from '../../api/carouselApi'
+import UploadProgressBar from '../../components/admin/UploadProgressBar'
 import { normalizeCarouselSlideList, resolveCarouselImageUrl } from '../../utils/carouselMedia'
 
 const apiErrorText = (err, fallback) =>
@@ -19,6 +20,7 @@ const AdminCarousel = () => {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState({ type: '', text: '' })
   const [saving, setSaving] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [deletingId, setDeletingId] = useState('')
 
   const [createFile, setCreateFile] = useState(null)
@@ -63,15 +65,20 @@ const AdminCarousel = () => {
       return
     }
     setSaving(true)
+    setUploadProgress(0)
     try {
       const fd = new FormData()
       fd.append('image', createFile)
-      if (createAlt.trim()) fd.append('alt', createAlt.trim())
+      if (createAlt.trim()) {
+        fd.append('title', createAlt.trim())
+        fd.append('alt', createAlt.trim())
+      }
       if (createOrder.trim() !== '' && !Number.isNaN(Number(createOrder))) {
+        fd.append('sortOrder', String(Number(createOrder)))
         fd.append('order', String(Number(createOrder)))
       }
       fd.append('isActive', 'true')
-      await adminCreateCarouselSlide(fd)
+      await adminCreateCarouselSlide(fd, { onProgress: setUploadProgress })
       setCreateFile(null)
       setCreateAlt('')
       setCreateOrder('')
@@ -83,6 +90,7 @@ const AdminCarousel = () => {
       showMessage('error', apiErrorText(err, 'Create failed.'))
     } finally {
       setSaving(false)
+      setUploadProgress(0)
     }
   }
 
@@ -127,15 +135,20 @@ const AdminCarousel = () => {
     e.preventDefault()
     if (!editId) return
     setSaving(true)
+    setUploadProgress(0)
     try {
       const fd = new FormData()
-      if (editAlt.trim()) fd.append('alt', editAlt.trim())
+      if (editAlt.trim()) {
+        fd.append('title', editAlt.trim())
+        fd.append('alt', editAlt.trim())
+      }
       if (editOrder.trim() !== '' && !Number.isNaN(Number(editOrder))) {
+        fd.append('sortOrder', String(Number(editOrder)))
         fd.append('order', String(Number(editOrder)))
       }
       fd.append('isActive', editActive ? 'true' : 'false')
       if (editFile) fd.append('image', editFile)
-      await adminUpdateCarouselSlide(editId, fd)
+      await adminUpdateCarouselSlide(editId, fd, { onProgress: setUploadProgress })
       setEditOpen(false)
       showMessage('success', 'Slide updated.')
       await loadSlides()
@@ -144,6 +157,7 @@ const AdminCarousel = () => {
       showMessage('error', apiErrorText(err, 'Update failed.'))
     } finally {
       setSaving(false)
+      setUploadProgress(0)
     }
   }
 
@@ -152,10 +166,10 @@ const AdminCarousel = () => {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Home carousel</h1>
-          <p className="mt-1 text-sm text-gray-600">
+          {/* <p className="mt-1 text-sm text-gray-600">
             Manage hero slides via the API. Active slides are shown on the store home page
 
-          </p>
+          </p> */}
         </div>
         <button
           type="button"
@@ -217,9 +231,10 @@ const AdminCarousel = () => {
             disabled={saving || !createFile}
             className="rounded-lg bg-black px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
           >
-            {saving ? 'Saving…' : 'Create slide'}
+            {saving ? 'Uploading…' : 'Create slide'}
           </button>
         </form>
+        <UploadProgressBar progress={uploadProgress} label="Uploading carousel image…" />
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -247,7 +262,7 @@ const AdminCarousel = () => {
                 >
                   <div className="aspect-[16/9] bg-gray-200">
                     {imgSrc ? (
-                      <img src={imgSrc} alt={slide.alt} className="h-full w-full object-cover" />
+                      <img src={imgSrc} alt={slide.alt} className="h-full w-full object-contain object-center bg-white" />
                     ) : (
                       <div className="flex h-full items-center justify-center text-xs text-gray-500">No image URL</div>
                     )}
@@ -359,9 +374,10 @@ const AdminCarousel = () => {
                     disabled={saving}
                     className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
                   >
-                    {saving ? 'Saving…' : 'Save'}
+                    {saving ? 'Uploading…' : 'Save'}
                   </button>
                 </div>
+                <UploadProgressBar progress={uploadProgress} label="Uploading carousel image…" />
               </form>
             )}
           </div>

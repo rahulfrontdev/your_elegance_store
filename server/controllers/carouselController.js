@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const CarouselSlide = require('../models/CarouselSlide');
-const cloudinary = require('../utils/cloudinary');
+const { saveUploadedFile } = require('../utils/localUpload');
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
@@ -11,8 +11,11 @@ const uploadSingleImage = async (file) => {
   if (!allowedImageMimeTypes.includes(file.mimetype)) {
     return { error: 'Image must be jpeg, jpg, png, or webp' };
   }
-  const uploaded = await cloudinary.uploader.upload(file.path);
-  return { url: uploaded.secure_url };
+  const saved = await saveUploadedFile(file, 'carousel');
+  if (saved?.error) {
+    return { error: saved.error };
+  }
+  return { url: saved.url };
 };
 
 // GET /api/carousel — public: active slides only, ordered
@@ -70,7 +73,10 @@ exports.getCarouselById = async (req, res) => {
 // POST /api/carousel — admin: create (multipart: image required)
 exports.createCarouselSlide = async (req, res) => {
   try {
-    const { title = '', linkUrl = '', sortOrder, isActive } = req.body;
+    const title = req.body.title ?? req.body.alt ?? '';
+    const linkUrl = req.body.linkUrl ?? '';
+    const sortOrder = req.body.sortOrder ?? req.body.order;
+    const { isActive } = req.body;
     const file = req.file;
 
     if (!file) {
@@ -114,12 +120,15 @@ exports.updateCarouselSlide = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Slide not found' });
     }
 
-    const { title, linkUrl, sortOrder, isActive } = req.body;
+    const { title, linkUrl, sortOrder, isActive, alt, order } = req.body;
 
-    if (title !== undefined) slide.title = String(title).trim();
+    if (title !== undefined || alt !== undefined) {
+      slide.title = String(title ?? alt ?? '').trim();
+    }
     if (linkUrl !== undefined) slide.linkUrl = String(linkUrl).trim();
-    if (sortOrder !== undefined && sortOrder !== '') {
-      const o = Number(sortOrder);
+    const orderValue = sortOrder ?? order;
+    if (orderValue !== undefined && orderValue !== '') {
+      const o = Number(orderValue);
       if (!Number.isNaN(o)) slide.sortOrder = o;
     }
     if (isActive !== undefined && isActive !== '') {

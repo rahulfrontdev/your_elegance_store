@@ -1,30 +1,38 @@
-const cloudinary = require('./cloudinary');
-
-const CLOUDINARY_UPLOAD_OPTIONS = {
-  quality: 'auto:good',
-  fetch_format: 'auto',
-  transformation: [{ width: 1200, height: 1200, crop: 'limit' }],
-};
+const { saveUploadedFile } = require('./localUpload');
 
 /**
- * Upload a file to Cloudinary with automatic compression and format optimization.
- * Returns the secure_url of the optimized image.
+ * Save an uploaded image to the server disk (products folder).
+ * Accepts a Multer file object or legacy file path string.
  */
-async function uploadOptimizedImage(filePath) {
-  const uploaded = await cloudinary.uploader.upload(filePath, CLOUDINARY_UPLOAD_OPTIONS);
-  return uploaded.secure_url;
+async function uploadOptimizedImage(fileOrPath, subdir = 'products') {
+  const file =
+    typeof fileOrPath === 'string'
+      ? {
+          path: fileOrPath,
+          mimetype: inferMimeFromPath(fileOrPath),
+          originalname: fileOrPath,
+        }
+      : fileOrPath;
+
+  const saved = await saveUploadedFile(file, subdir);
+  if (!saved) return '';
+  if (saved.error) return saved;
+  return saved.url;
 }
 
-/**
- * Upload multiple files in parallel with optimization.
- */
-async function uploadOptimizedImages(filePaths) {
+async function uploadOptimizedImages(filePaths, subdir = 'products') {
   if (!filePaths?.length) return [];
-  return Promise.all(filePaths.map((path) => uploadOptimizedImage(path)));
+  return Promise.all(filePaths.map((entry) => uploadOptimizedImage(entry, subdir)));
+}
+
+function inferMimeFromPath(filePath) {
+  const ext = String(filePath).toLowerCase().split('.').pop();
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  return 'image/jpeg';
 }
 
 module.exports = {
   uploadOptimizedImage,
   uploadOptimizedImages,
-  CLOUDINARY_UPLOAD_OPTIONS,
 };

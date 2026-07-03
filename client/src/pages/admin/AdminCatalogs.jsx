@@ -91,10 +91,10 @@ const AdminCatalogs = () => {
     <div className="space-y-6 p-2 text-neutral-900 lg:p-4">
       <div>
         <h1 className="text-xl font-bold">Catalogs</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        {/* <p className="mt-1 text-sm text-neutral-600">
           Catalog-wide discount targets via <code className="rounded bg-neutral-100 px-1 text-xs">/catalogs</code>.
           Adjust fields to match your API.
-        </p>
+        </p> */}
       </div>
 
       {error && (

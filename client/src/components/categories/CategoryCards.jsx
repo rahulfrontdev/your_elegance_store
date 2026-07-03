@@ -20,24 +20,24 @@ const CategoryCards = () => {
   }, [])
 
   return (
-    <section className="px-1 py-3 sm:px-2 sm:py-4 lg:px-2">
-      <div className="mx-auto max-w-8xl lg:ml-2">
+    <section className="px-2 py-3 sm:px-4 sm:py-4 lg:px-4">
+      <div className="mx-auto w-full max-w-8xl">
         <h2 className="mb-3 text-center text-xl font-bold text-neutral-900 sm:mb-4 sm:text-2xl">
           Shop by Category
         </h2>
 
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-3 lg:gap-6 xl:grid-cols-4">
           {categories.map((cat) => (
             <Link
               key={cat._id || cat.id}
               to={`/products?category=${encodeURIComponent(cat.name)}`}
-              className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-neutral-300 hover:shadow-lg"
+              className="group w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-neutral-300 hover:shadow-lg"
             >
-              <div className="relative h-44 bg-gradient-to-br from-neutral-50 to-neutral-100 p-1.5 sm:h-44 sm:p-2">
+              <div className="relative h-52 w-full bg-gradient-to-br from-neutral-50 to-neutral-100 p-1 sm:h-56 sm:p-1.5 lg:h-64 xl:h-72">
                 <img
                   src={cat.image}
                   alt={cat.name}
-                  className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                  className="h-full w-full object-contain object-center bg-white transition-transform duration-500 group-hover:scale-[1.02]"
                 />
               </div>
 

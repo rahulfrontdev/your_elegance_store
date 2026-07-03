@@ -1,16 +1,7 @@
-/**
- * Resolve image URL from API (absolute or relative to API origin without /api).
- * @param {string | undefined} path
- */
+import { resolveMediaUrl } from './mediaUrl'
+
 export function resolveCarouselImageUrl(path) {
-  if (!path || typeof path !== 'string') return ''
-  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
-    return path
-  }
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
-  const origin = base.replace(/\/api\/?$/, '')
-  const normalized = path.startsWith('/') ? path : `/${path}`
-  return `${origin}${normalized}`
+  return resolveMediaUrl(path)
 }
 
 /**
@@ -34,6 +25,7 @@ export function normalizeCarouselSlide(raw) {
     id: String(id ?? resolved),
     image: resolved,
     alt,
+    linkUrl: raw.linkUrl || '',
     isActive: raw.isActive !== false && raw.active !== false,
     order: typeof raw.order === 'number' ? raw.order : raw.orderIndex ?? raw.sortOrder,
     raw,

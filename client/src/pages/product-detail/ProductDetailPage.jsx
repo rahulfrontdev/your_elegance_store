@@ -38,7 +38,7 @@ function ProductGallery({ images, alt, activeImage, onSelectImage }) {
               className={`h-10 w-10 shrink-0 overflow-hidden rounded-lg border transition ${current === src ? 'border-neutral-900 ring-1 ring-neutral-900' : 'border-neutral-200 hover:border-neutral-400'
                 }`}
             >
-              <img src={src} alt={alt} className="h-full w-full object-cover" />
+              <img src={src} alt={alt} className="h-full w-full object-contain object-center" />
             </button>
           ))}
         </div>

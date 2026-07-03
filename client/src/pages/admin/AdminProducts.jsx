@@ -9,6 +9,7 @@ import {
   adminFetchRootCategories,
   adminUpdateProduct,
 } from "../../api/adminApi";
+import UploadProgressBar from "../../components/admin/UploadProgressBar";
 
 function formatProductSaveError(error) {
   const d = error?.response?.data
@@ -77,6 +78,7 @@ const AdminProducts = () => {
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
 
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [deletingId, setDeletingId] = useState("");
 
   useEffect(() => {
@@ -415,12 +417,16 @@ const AdminProducts = () => {
 
     try {
       setSaving(true);
+      setUploadProgress(0);
       const formData = buildFormData();
+      const progressOptions = {
+        onProgress: (pct) => setUploadProgress(pct),
+      };
 
       if (editingProductId) {
-        await adminUpdateProduct(editingProductId, formData);
+        await adminUpdateProduct(editingProductId, formData, progressOptions);
       } else {
-        await adminCreateProduct(formData);
+        await adminCreateProduct(formData, progressOptions);
       }
 
       setIsModalOpen(false);
@@ -431,6 +437,7 @@ const AdminProducts = () => {
       return;
     } finally {
       setSaving(false);
+      setUploadProgress(0);
     }
 
     try {
@@ -823,6 +830,8 @@ const AdminProducts = () => {
                 )}
               </div>
             </div>
+
+            <UploadProgressBar progress={uploadProgress} label={saving ? "Uploading product images…" : ""} />
 
             <div className="flex justify-end gap-3 mt-5">
               <button

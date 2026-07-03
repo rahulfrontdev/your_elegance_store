@@ -106,7 +106,7 @@ const ProductsPage = () => {
   }
 
   return (
-    <div className="rounded-2xl bg-gradient-to-b from-neutral-50 to-white p-3 sm:p-4">
+    <div className="rounded-2xl bg-gradient-to-b from-neutral-50 to-white p-3 sm:p-4 overflow-x-clip">
       <header className="mb-3 sm:mb-4">
         <h1 className="text-2xl font-bold text-neutral-900 sm:text-3xl">Products</h1>
         {/* <p className="mt-1 text-xs sm:text-sm text-neutral-600">
@@ -167,7 +167,7 @@ const ProductsPage = () => {
           onRemoveChip={handleRemoveChip}
           onClearAll={handleClearAll}
           resultCount={filteredProducts.length}
-          className="hidden lg:block lg:sticky lg:top-4 lg:z-10 lg:max-h-[calc(100vh-2rem)] lg:w-64 lg:overflow-y-auto"
+          className="hidden lg:block lg:sticky lg:top-4 lg:z-10 lg:max-h-[calc(100vh-2rem)] lg:w-64 lg:overflow-y-auto lg:scrollbar-hidden"
         />
 
         <div className="flex min-w-0 flex-1 flex-col gap-4">

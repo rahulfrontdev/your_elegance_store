@@ -16,7 +16,7 @@ const InstagramReelEmbed = ({ reel, title }) => {
         playsInline
         preload="metadata"
         poster={thumbnail || undefined}
-        className="aspect-[9/16] max-h-[min(32rem,70vh)] w-full bg-black object-contain"
+        className="aspect-[9/16] max-h-[min(32rem,70vh)] w-full max-w-full bg-black object-contain"
         src={videoUrl}
       />
     )
@@ -38,8 +38,9 @@ const InstagramReelEmbed = ({ reel, title }) => {
       <iframe
         src={`${embedSrc}${embedSrc.includes('?') ? '&' : '?'}embed=captioned`}
         title={title || 'Instagram reel'}
-        className="instagram-reel-embed__iframe aspect-[9/16] max-h-[min(32rem,70vh)] w-full border-0 bg-black"
+        className="instagram-reel-embed__iframe"
         loading="lazy"
+        scrolling="no"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
         referrerPolicy="strict-origin-when-cross-origin"

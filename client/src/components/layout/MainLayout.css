@@ -9,12 +9,13 @@
 
 .app-layout {
   min-height: 100vh;
+  overflow-x: clip;
   background-color: #e8f4f4;
   background-image: url('/background_image.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  background-attachment: fixed;
+  background-attachment: scroll;
 }
 
 .site-header {
@@ -327,6 +328,7 @@
 .scroll-primary-nav__dropdown-panel-inner {
   min-width: 190px;
   max-height: min(70vh, 420px);
+  overflow-x: visible;
   overflow-y: auto;
   padding: 0.25rem 0;
   background: #fff;
@@ -349,19 +351,70 @@
   background: #f1f5f9;
 }
 
+.category-nav-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .category-nav-tree__item {
+  position: relative;
   display: block;
 }
 
 .category-nav-tree__link {
   display: flex !important;
   align-items: center;
-  gap: 0.35rem;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem !important;
+  font-size: 0.875rem;
+  color: #1e293b;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.category-nav-tree__link:hover {
+  background: #f1f5f9;
+}
+
+.category-nav-tree__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.category-nav-tree__arrow {
+  color: #64748b;
+  flex: 0 0 auto;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.category-nav-tree__submenu {
+  display: none;
+  position: absolute;
+  left: calc(100% - 4px);
+  top: 0;
+  z-index: 5200;
+  min-width: 12rem;
+  max-height: min(70vh, 420px);
+  overflow-y: auto;
+  padding: 0.25rem 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+  scrollbar-width: thin;
+}
+
+.category-nav-tree__item--has-children:hover > .category-nav-tree__submenu,
+.category-nav-tree__item--has-children:focus-within > .category-nav-tree__submenu {
+  display: block;
 }
 
 .category-nav-tree__branch {
-  color: #94a3b8;
-  flex: 0 0 auto;
+  display: none;
 }
 
 .scroll-primary-nav__actions {
@@ -467,6 +520,7 @@
   margin: 0 auto;
   padding: 0.25rem 0.75rem 0.75rem;
   min-height: 50vh;
+  overflow-x: clip;
 }
 
 .app-layout__main--home {
@@ -671,6 +725,18 @@
   background: rgba(255, 255, 255, 0.25);
 }
 
+.site-navbar-primary__link--active,
+.scroll-primary-nav__link--active {
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow: inset 0 -2px 0 #0f172a;
+  font-weight: 600;
+}
+
+.scroll-primary-nav__link {
+  text-decoration: none;
+  border-radius: 6px;
+}
+
 .site-navbar-primary__details {
   position: relative;
   flex-shrink: 0;
@@ -823,6 +889,7 @@
 .site-navbar-primary__panel-inner {
   min-width: 12rem;
   max-height: min(70vh, 420px);
+  overflow-x: visible;
   overflow-y: auto;
   padding: 0.25rem 0;
   background: #fff;

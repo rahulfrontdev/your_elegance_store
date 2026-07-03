@@ -2,7 +2,7 @@
 
 const Category = require("../models/Category");
 const slugify = require("slugify");
-const cloudinary = require("../utils/cloudinary");
+const { saveUploadedFile } = require("../utils/localUpload");
 const multer = require("../middleware/multer/multer");
 
 /* -------------------- Helpers -------------------- */
@@ -89,8 +89,11 @@ exports.createCategory = async (req, res) => {
     let image = "";
 
     if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path);
-      image = result.secure_url;
+      const saved = await saveUploadedFile(req.file, "categories");
+      if (saved?.error) {
+        return fail(res, 400, saved.error);
+      }
+      image = saved.url;
     }
 
     const category = await Category.create({
@@ -208,7 +211,7 @@ exports.getDescendantCategories = async (req, res) => {
       path: { $regex: `^${escapeRegex(parent.path)},` },
       ...(includeInactive ? {} : { isActive: true }),
     })
-      .sort({ level: 1, name: 1 })
+      .sort({ level: 1, createdAt: -1 })
       .lean();
 
     return success(res, 200, "Descendants fetched", descendants);
@@ -224,7 +227,7 @@ exports.getCategoryTree = async (req, res) => {
 
     const categories = await Category.find(filter).sort({
       level: 1,
-      name: 1,
+      createdAt: -1,
     });
 
     const map = {};
@@ -280,8 +283,11 @@ exports.updateCategory = async (req, res) => {
     }
 
     if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path);
-      updateData.image = result.secure_url;
+      const saved = await saveUploadedFile(req.file, "categories");
+      if (saved?.error) {
+        return fail(res, 400, saved.error);
+      }
+      updateData.image = saved.url;
     }
 
     const updated = await Category.findByIdAndUpdate(

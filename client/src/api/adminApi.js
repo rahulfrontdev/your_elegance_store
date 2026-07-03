@@ -22,9 +22,52 @@ async function readJsonBody(res) {
  * Multer routes: use `fetch` + FormData without setting Content-Type so the browser sets
  * the multipart boundary. Axios default JSON Content-Type often breaks Multer.
  */
-async function multipartFormRequest(method, path, formData) {
+async function multipartFormRequest(method, path, formData, { onProgress } = {}) {
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : ''
   const url = `${apiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`
+
+  if (typeof onProgress === 'function' && typeof XMLHttpRequest !== 'undefined') {
+    const data = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open(method, url)
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return
+        onProgress(Math.round((event.loaded / event.total) * 100))
+      }
+      xhr.onload = () => {
+        let parsed = {}
+        try {
+          parsed = xhr.responseText ? JSON.parse(xhr.responseText) : {}
+        } catch {
+          parsed = { message: xhr.responseText?.slice(0, 300) || xhr.statusText }
+        }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          if (parsed && parsed.success === false) {
+            const err = new Error(typeof parsed.message === 'string' ? parsed.message : 'Save failed')
+            err.response = { status: xhr.status, data: parsed }
+            reject(err)
+            return
+          }
+          resolve(parsed)
+          return
+        }
+        const err = new Error(
+          typeof parsed?.message === 'string'
+            ? parsed.message
+            : typeof parsed?.error === 'string'
+              ? parsed.error
+              : xhr.statusText || 'Request failed'
+        )
+        err.response = { status: xhr.status, data: parsed }
+        reject(err)
+      }
+      xhr.onerror = () => reject(new Error('Network error during upload'))
+      xhr.send(formData)
+    })
+    return { data, status: 200 }
+  }
+
   const headers = {}
   if (token) headers.Authorization = `Bearer ${token}`
 
@@ -57,9 +100,9 @@ async function multipartFormRequest(method, path, formData) {
  */
 
 /** Categories — POST multipart (same Multer / Content-Type constraints as products) */
-export const adminCreateCategoryUpload = (formData) =>
+export const adminCreateCategoryUpload = (formData, options) =>
   formData instanceof FormData
-    ? multipartFormRequest('POST', '/categories/create', formData)
+    ? multipartFormRequest('POST', '/categories/create', formData, options)
     : axiosInstance.post('/categories/create', formData)
 export const adminFetchCategoryTree = (options = {}) =>
   axiosInstance.get('/categories/tree', { params: options })
@@ -78,14 +121,14 @@ export const adminFetchProducts = () => axiosInstance.get('/products')
 export const adminFetchProductById = (id) => axiosInstance.get(`/products/${id}`)
 export const adminFetchProductGstRates = () => axiosInstance.get('/products/gst-rates')
 /** POST /products — multipart FormData; admin Bearer JWT (see multipartFormRequest). */
-export const adminCreateProduct = (body) =>
+export const adminCreateProduct = (body, options) =>
   body instanceof FormData
-    ? multipartFormRequest('POST', '/products', body)
+    ? multipartFormRequest('POST', '/products', body, options)
     : axiosInstance.post('/products', body)
 
-export const adminUpdateProduct = (id, body) =>
+export const adminUpdateProduct = (id, body, options) =>
   body instanceof FormData
-    ? multipartFormRequest('PUT', `/products/${id}`, body)
+    ? multipartFormRequest('PUT', `/products/${id}`, body, options)
     : axiosInstance.put(`/products/${id}`, body)
 export const adminDeleteProduct = (id) => axiosInstance.delete(`/products/${id}`)
 

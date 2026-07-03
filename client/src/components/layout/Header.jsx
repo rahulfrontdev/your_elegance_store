@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { LayoutDashboard } from 'lucide-react'
 import { useCart } from '../../context/CartContext.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
@@ -41,6 +41,11 @@ const IconSearch = () => (
 const SCROLL_SECONDARY_SHOW_PX = 100
 /** Hide slightly earlier when scrolling back up (reduces flicker). */
 const SCROLL_SECONDARY_HIDE_PX = 60
+
+const scrollNavLinkClass = ({ isActive }) =>
+  `scroll-primary-nav__link whitespace-nowrap px-2 py-1 text-sm hover:opacity-90${
+    isActive ? ' scroll-primary-nav__link--active' : ' text-slate-900'
+  }`
 
 const Header = () => {
   const navigate = useNavigate()
@@ -247,12 +252,12 @@ const Header = () => {
             <div className="scroll-primary-nav__search">{searchForm}</div>
 
             <div className="scroll-primary-nav__links">
-              <Link to="/" className="whitespace-nowrap px-2 py-1 text-sm text-slate-900 hover:opacity-90">
+              <NavLink to="/" end className={scrollNavLinkClass}>
                 Home
-              </Link>
-              <Link to="/products" className="whitespace-nowrap px-2 py-1 text-xs text-slate-900 hover:opacity-90">
+              </NavLink>
+              <NavLink to="/products" className={scrollNavLinkClass}>
                 Products
-              </Link>
+              </NavLink>
 
               {categoryNavigation.map((category) =>
                 category.children.length > 0 ? (
@@ -267,13 +272,9 @@ const Header = () => {
                     onNavigate={close}
                   />
                 ) : (
-                  <Link
-                    key={category.id}
-                    to={category.to}
-                    className="whitespace-nowrap px-2 py-1 text-sm text-slate-900 hover:opacity-90"
-                  >
+                  <NavLink key={category.id} to={category.to} className={scrollNavLinkClass}>
                     {category.name}
-                  </Link>
+                  </NavLink>
                 )
               )}
             </div>
