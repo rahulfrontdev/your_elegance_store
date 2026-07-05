@@ -1,9 +1,7 @@
 import axios from 'axios'
+import { getApiBaseUrl } from '../config/api.js'
 
-/**
- * Set `VITE_API_BASE_URL` in `.env` (e.g. http://localhost:3000/api).
- */
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+const baseURL = getApiBaseUrl()
 
 export const axiosInstance = axios.create({
   baseURL,

@@ -1,14 +1,10 @@
-/**
- * API origin without /api suffix — e.g. http://localhost:8000
- */
-export function getApiOrigin() {
-  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
-  return String(base).replace(/\/api\/?$/, '').replace(/\/+$/, '')
-}
+import { getApiOrigin } from '../config/api.js'
+
+export { getApiOrigin }
 
 /**
  * Resolve product/carousel/upload paths to a browser-loadable URL.
- * In dev, `/uploads/...` uses the Vite proxy so images work on localhost and LAN IPs.
+ * Strips localhost from stored URLs and uses the production origin.
  */
 export function resolveMediaUrl(url) {
   if (!url || typeof url !== 'string') return ''
@@ -21,8 +17,8 @@ export function resolveMediaUrl(url) {
   const uploadsIdx = trimmed.indexOf('/uploads/')
   if (uploadsIdx >= 0) {
     const relative = trimmed.slice(uploadsIdx)
-    if (import.meta.env.DEV) return relative
-    return `${getApiOrigin()}${relative}`
+    const origin = getApiOrigin()
+    return origin ? `${origin}${relative}` : relative
   }
 
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
@@ -30,8 +26,8 @@ export function resolveMediaUrl(url) {
   }
 
   if (trimmed.startsWith('/')) {
-    if (import.meta.env.DEV) return trimmed
-    return `${getApiOrigin()}${trimmed}`
+    const origin = getApiOrigin()
+    return origin ? `${origin}${trimmed}` : trimmed
   }
 
   return trimmed

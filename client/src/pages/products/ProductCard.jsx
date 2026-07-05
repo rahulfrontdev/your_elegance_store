@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom'
 import { stringifyEntityId } from '../../utils/discountPreview'
+import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 const isActiveDiscount = (value) => value === true || value === 'true' || value === 1 || value === '1'
 
 const ProductCard = ({ product, returnPath = '/products' }) => {
   const productId = stringifyEntityId(product?._id ?? product?.id)
-  const imageSrc = product?.imageUrl || product?.image
+  const imageSrc = resolveMediaUrl(product?.imageUrl || product?.image)
   const brandLabel =
     product?.brand || (typeof product?.category === 'object' ? product?.category?.name : '')
   const discountPercent = Number(product?.discountPercentage ?? 0)

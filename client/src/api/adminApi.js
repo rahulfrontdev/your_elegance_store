@@ -1,12 +1,7 @@
 import axiosInstance from './axiosInstance'
+import { getApiBaseUrl } from '../config/api.js'
 
-/** Must match axiosInstance baseURL so local dev hits localhost, not production. */
-const apiBaseUrl = () =>
-  String(
-    import.meta.env.VITE_API_BASE_URL ||
-      axiosInstance.defaults.baseURL ||
-      'http://localhost:8000/api'
-  ).replace(/\/+$/, '')
+const apiBaseUrl = () => getApiBaseUrl()
 
 async function readJsonBody(res) {
   const text = await res.text()

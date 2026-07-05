@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom'
+import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 const isActiveDiscount = (value) => value === true || value === 'true' || value === 1 || value === '1'
 
 /** Shared card style for Best Deals grid and New Arrivals carousel */
 const HomeSectionProductCard = ({ product, className = '' }) => {
   const id = product?._id || product?.id
-  const image = product?.imageUrl || product?.image || product?.images?.[0] || ''
+  const image = resolveMediaUrl(product?.imageUrl || product?.image || product?.images?.[0] || '')
   const name = product?.name || 'Product'
   const discountPercent = Number(product?.discountPercentage ?? product?.discountPercent ?? 0)
   const discountAmount = Number(product?.discountAmount ?? 0)

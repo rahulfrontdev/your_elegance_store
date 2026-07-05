@@ -7,6 +7,7 @@ import { clearCurrentProduct, loadProductById } from '../../features/products/pr
 import { fetchWishlistStatus, toggleWishlistItem } from '../../api/wishlistApi'
 import { stringifyEntityId } from '../../utils/discountPreview'
 import { colourToHex, isLightColour } from '../../utils/colourSwatch'
+import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 const isActiveDiscount = (value) => value === true || value === 'true' || value === 1 || value === '1'
 
@@ -83,9 +84,9 @@ function buildColourOptions(productRaw, mappedVariations) {
 
 function resolveVariationImageUrl(variation, index, extraImages, hasVariations) {
   const saved = String(variation?.imageUrl || '').trim()
-  if (saved) return saved
+  if (saved) return resolveMediaUrl(saved)
   if (hasVariations && Array.isArray(extraImages) && extraImages[index]) {
-    return String(extraImages[index]).trim()
+    return resolveMediaUrl(String(extraImages[index]).trim())
   }
   return ''
 }
@@ -203,7 +204,7 @@ const ProductDetailPage = () => {
       typeof productRaw?.category === 'string'
         ? productRaw.category
         : productRaw?.category?.name || ''
-    const image = productRaw?.imageUrl || productRaw?.image || ''
+    const image = resolveMediaUrl(productRaw?.imageUrl || productRaw?.image || '')
     const discountAmountRaw = Number(productRaw?.discountAmount ?? 0)
     const discountPercentRaw = Number(productRaw?.discountPercentage ?? 0)
     const hasActiveDiscount =
@@ -218,8 +219,8 @@ const ProductDetailPage = () => {
     const normalizedExtraImages = Array.isArray(productRaw?.images)
       ? productRaw.images
         .map((img) => {
-          if (typeof img === 'string') return img
-          if (img && typeof img === 'object') return img.url || img.imageUrl || ''
+          if (typeof img === 'string') return resolveMediaUrl(img)
+          if (img && typeof img === 'object') return resolveMediaUrl(img.url || img.imageUrl || '')
           return ''
         })
         .filter(Boolean)
