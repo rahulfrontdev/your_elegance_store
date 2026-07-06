@@ -33,7 +33,7 @@ const ensureDir = (dir) => {
 };
 
 const getPublicBaseUrl = () =>
-  String(process.env.API_PUBLIC_URL || 'https://www.yourelegancestore.in').replace(/\/+$/, '');
+  String(process.env.API_PUBLIC_URL || 'http://98.81.77.254').replace(/\/+$/, '');
 
 const buildFilename = (originalName, mimetype) => {
   const fromName = path.extname(originalName || '').toLowerCase();

@@ -1,7 +1,10 @@
-/** Production API — used when VITE_API_BASE_URL is not set */
-export const PRODUCTION_API_BASE_URL = 'https://www.yourelegancestore.in/api'
+/** EC2 public IP — used until DNS/SSL for yourelegancestore.in is live */
+export const PRODUCTION_SERVER_ORIGIN = 'http://98.81.77.254'
 
-export const PRODUCTION_API_ORIGIN = 'https://www.yourelegancestore.in'
+/** Production API — used when VITE_API_BASE_URL is not set */
+export const PRODUCTION_API_BASE_URL = `${PRODUCTION_SERVER_ORIGIN}/api`
+
+export const PRODUCTION_API_ORIGIN = PRODUCTION_SERVER_ORIGIN
 
 /**
  * API base URL for axios (must end with /api).
