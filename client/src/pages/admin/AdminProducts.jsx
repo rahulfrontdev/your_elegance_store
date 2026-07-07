@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   adminCreateProduct,
   adminDeleteProduct,
@@ -80,6 +80,8 @@ const AdminProducts = () => {
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [deletingId, setDeletingId] = useState("");
+  const mainImageInputRef = useRef(null);
+  const extraImagesInputRef = useRef(null);
 
   useEffect(() => {
     loadInitialData();
@@ -219,8 +221,12 @@ const AdminProducts = () => {
       return;
     }
     if (name === "extraImages") {
-      const arr = Array.from(files || []).slice(0, MAX_EXTRA_IMAGES);
-      setProductForm((prev) => ({ ...prev, extraImages: arr }));
+      const incoming = Array.from(files || []);
+      setProductForm((prev) => {
+        const merged = [...(prev.extraImages || []), ...incoming].slice(0, MAX_EXTRA_IMAGES);
+        return { ...prev, extraImages: merged };
+      });
+      e.target.value = "";
       return;
     }
 
@@ -278,6 +284,27 @@ const AdminProducts = () => {
     }));
   };
 
+  const clearMainImage = () => {
+    setProductForm((prev) => ({ ...prev, image: null }));
+    if (mainImageInputRef.current) mainImageInputRef.current.value = "";
+  };
+
+  const removeExtraImage = (index) => {
+    setProductForm((prev) => ({
+      ...prev,
+      extraImages: prev.extraImages.filter((_, i) => i !== index),
+    }));
+  };
+
+  const clearAllExtraImages = () => {
+    setProductForm((prev) => ({ ...prev, extraImages: [] }));
+    if (extraImagesInputRef.current) extraImagesInputRef.current.value = "";
+  };
+
+  const clearVariationImage = (index) => {
+    handleVariationChange(index, "image", null);
+  };
+
   const validateForm = () => {
     if (!productForm.name?.trim() || !productForm.category) return false;
 
@@ -313,7 +340,20 @@ const AdminProducts = () => {
     }
 
     const allowedMime = /^image\/(jpeg|pjpeg|png|webp)$/i;
-    const fileTypeOk = (f) => !f?.type || allowedMime.test(f.type);
+    const fileTypeOk = (f) => {
+      if (!f) return true;
+      if (f.type && allowedMime.test(f.type)) return true;
+      return /\.(jpe?g|png|webp)$/i.test(String(f.name || ""));
+    };
+
+    if (!editingProductId) {
+      const hasMainImage =
+        Boolean(productForm.image) || String(productForm.imageUrl || "").trim();
+      if (!hasMainImage) {
+        alert("Main product image is required.");
+        return false;
+      }
+    }
     if (productForm.image && !fileTypeOk(productForm.image)) {
       alert("Main image must be jpeg, jpg, png, or webp.");
       return false;
@@ -668,6 +708,7 @@ const AdminProducts = () => {
                 <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-3 cursor-pointer hover:bg-gray-50 transition">
                   <span className="text-gray-500 text-sm">Product Image — jpeg, jpg, png, webp (auto-optimized on upload)</span>
                   <input
+                    ref={mainImageInputRef}
                     type="file"
                     name="image"
                     accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
@@ -676,12 +717,44 @@ const AdminProducts = () => {
                   />
                 </label>
                 {existingImageUrl && !productForm.image && (
-                  <p className="text-xs text-gray-500 mt-1">Using current image</p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <img
+                      src={existingImageUrl}
+                      alt="Current product"
+                      className="h-20 w-20 rounded-lg border border-gray-200 object-cover"
+                    />
+                    <p className="text-xs text-gray-500">Using current saved image</p>
+                  </div>
                 )}
                 {productForm.image && (
-                  <p className="text-xs text-emerald-600 mt-1">
-                    Main image selected: {productForm.image.name}
-                  </p>
+                  <div className="mt-2 flex items-start gap-3">
+                    <div className="relative">
+                      <img
+                        src={URL.createObjectURL(productForm.image)}
+                        alt={productForm.image.name}
+                        className="h-20 w-20 rounded-lg border border-gray-200 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={clearMainImage}
+                        className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white shadow hover:bg-red-700"
+                        aria-label="Remove selected main image"
+                        title="Remove image"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-emerald-600 truncate">{productForm.image.name}</p>
+                      <button
+                        type="button"
+                        onClick={clearMainImage}
+                        className="mt-1 text-xs text-red-600 hover:underline"
+                      >
+                        Remove & choose another
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -689,6 +762,7 @@ const AdminProducts = () => {
                 <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-3 cursor-pointer hover:bg-gray-50 transition">
                   <span className="text-gray-500 text-sm">Extra images (up to {MAX_EXTRA_IMAGES}) — same types</span>
                   <input
+                    ref={extraImagesInputRef}
                     type="file"
                     name="extraImages"
                     accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
@@ -703,12 +777,45 @@ const AdminProducts = () => {
                   </p>
                 )}
                 {productForm.extraImages.length > 0 && (
-                  <p className="text-xs text-emerald-600 mt-1">
-                    {productForm.extraImages.length} extra image(s) selected
-                    {productForm.extraImages.length > MAX_EXTRA_IMAGES
-                      ? ` — only the first ${MAX_EXTRA_IMAGES} will be sent.`
-                      : "."}
-                  </p>
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-emerald-600">
+                        {productForm.extraImages.length} extra image(s) selected
+                        {productForm.extraImages.length > MAX_EXTRA_IMAGES
+                          ? ` — only the first ${MAX_EXTRA_IMAGES} will be sent.`
+                          : "."}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={clearAllExtraImages}
+                        className="text-xs text-red-600 hover:underline shrink-0"
+                      >
+                        Clear all
+                      </button>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {productForm.extraImages.slice(0, MAX_EXTRA_IMAGES).map((file, index) => (
+                        <div key={`${file.name}-${file.size}-${index}`} className="relative">
+                          <div className="h-16 w-16 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={file.name}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeExtraImage(index)}
+                            className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow hover:bg-red-700"
+                            aria-label={`Remove ${file.name}`}
+                            title="Remove image"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -798,6 +905,7 @@ const AdminProducts = () => {
                             <label className="flex flex-col items-center justify-center border border-dashed border-gray-300 rounded-lg p-2 cursor-pointer hover:bg-white transition bg-white">
                               <span className="text-gray-500 text-xs">Variation Image</span>
                               <input
+                                key={`variation-image-${index}-${variation.image ? variation.image.name : "empty"}`}
                                 type="file"
                                 accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                                 onChange={(e) =>
@@ -810,7 +918,31 @@ const AdminProducts = () => {
                               <p className="text-xs text-gray-500 mt-1">Using existing variation image</p>
                             )}
                             {variation.image && (
-                              <p className="text-xs text-emerald-600 mt-1">{variation.image.name}</p>
+                              <div className="mt-2 flex items-start gap-2">
+                                <div className="relative">
+                                  <img
+                                    src={URL.createObjectURL(variation.image)}
+                                    alt={variation.image.name}
+                                    className="h-14 w-14 rounded-lg border border-gray-200 object-cover"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => clearVariationImage(index)}
+                                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow hover:bg-red-700"
+                                    aria-label="Remove variation image"
+                                    title="Remove image"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => clearVariationImage(index)}
+                                  className="text-xs text-red-600 hover:underline"
+                                >
+                                  Remove & choose another
+                                </button>
+                              </div>
                             )}
                           </div>
                         </div>

@@ -92,15 +92,21 @@ function resolveVariationImageUrl(variation, index, extraImages, hasVariations) 
 }
 
 function getImagesForColourOption(option, product) {
-  if (!option || !product) return []
+  if (!product) return []
+
+  const allGallery = Array.isArray(product.images)
+    ? product.images.map((img) => String(img || '').trim()).filter(Boolean)
+    : []
+
+  if (!option) return allGallery
 
   const primary = String(option.imageUrl || '').trim()
-  if (primary) return [primary]
-
-  if (option.isBase) {
-    const main = String(product.image || '').trim()
-    return main ? [main] : []
+  if (primary) {
+    const rest = allGallery.filter((img) => img !== primary)
+    return [primary, ...rest]
   }
+
+  if (allGallery.length > 0) return allGallery
 
   const fallback = String(product.image || '').trim()
   return fallback ? [fallback] : []

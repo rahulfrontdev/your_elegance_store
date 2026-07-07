@@ -16,7 +16,7 @@ const InstagramReelEmbed = ({ reel, title }) => {
         playsInline
         preload="metadata"
         poster={thumbnail || undefined}
-        className="aspect-[9/16] max-h-[min(32rem,70vh)] w-full max-w-full bg-black object-contain"
+        className="aspect-[9/16] max-h-[min(42rem,85vh)] w-full max-w-full bg-black object-contain"
         src={videoUrl}
       />
     )
@@ -24,7 +24,7 @@ const InstagramReelEmbed = ({ reel, title }) => {
 
   if (!isValid) {
     return (
-      <div className="flex aspect-[9/16] max-h-[min(28rem,65vh)] items-center justify-center bg-neutral-100 p-4 text-center">
+      <div className="flex aspect-[9/16] max-h-[min(38rem,80vh)] items-center justify-center bg-neutral-100 p-4 text-center">
         <p className="text-sm text-neutral-600">
           Invalid reel link. In admin, paste a reel URL like{' '}
           <span className="font-mono text-xs">instagram.com/reel/ABC123/</span>

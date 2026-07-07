@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const path = require('path');
 const Product = require('../models/Product');
 const Category = require('../models/Category');
 const { uploadOptimizedImage } = require('../utils/imageOptimizer');
@@ -55,15 +56,21 @@ const productPopulate = [
 ];
 
 const allowedGstRates = [3, 12, 18];
-const allowedImageMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const allowedImageMimeTypes = [
+  'image/jpeg',
+  'image/jpg',
+  'image/pjpeg',
+  'image/png',
+  'image/x-png',
+  'image/webp',
+];
+const allowedImageExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 
-const parseNumber = (value) => {
-  if (value === undefined || value === null || value === '') {
-    return undefined;
-  }
-  const parsed = Number(value);
-  if (Number.isNaN(parsed)) return NaN;
-  return parsed;
+const validateImageMimeType = (file) => {
+  if (!file) return true;
+  if (file.mimetype && allowedImageMimeTypes.includes(file.mimetype)) return true;
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  return allowedImageExtensions.has(ext);
 };
 
 const normalizeOptionalObjectId = (value) => {
@@ -89,8 +96,14 @@ const normalizeCategoryQueryValues = (rawCategory) => {
     .filter(Boolean);
 };
 
-const validateImageMimeType = (file) =>
-  !file || allowedImageMimeTypes.includes(file.mimetype);
+const parseNumber = (value) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (Number.isNaN(parsed)) return NaN;
+  return parsed;
+};
 
 /** Normalise multer output from `.any()` (array) or `.fields()` (object). */
 const groupUploadedFiles = (files) => {
@@ -218,7 +231,7 @@ const uploadProductImages = async (rawFiles, extraImageCount = 0, hasVariations 
   const { extraImageFiles } = splitGalleryFiles(files, extraImageCount, hasVariations);
   const mainImageFile = files.image[0];
 
-  if (!validateImageMimeType(mainImageFile)) {
+  if (mainImageFile && !validateImageMimeType(mainImageFile)) {
     return { error: 'Main image must be jpeg, jpg, png, or webp' };
   }
   if (extraImageFiles.some((file) => !validateImageMimeType(file))) {
