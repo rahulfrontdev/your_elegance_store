@@ -73,6 +73,7 @@ export default function useHoverNavDropdown(closeOnLocationKey) {
 
       if (target.closest(menuLinkSelector)) return
       if (target.closest('.nav-dropdown')) return
+      if (target.closest('.category-slope__flyout')) return
 
       close()
     }

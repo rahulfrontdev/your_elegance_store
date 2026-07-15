@@ -189,7 +189,10 @@ const AccountOrderDetailsPage = () => {
       })
       setReviewFeedback((prev) => ({
         ...prev,
-        [productId]: { type: 'success', message: 'Review submitted successfully.' },
+        [productId]: {
+          type: 'success',
+          message: 'Review submitted. It will appear on the website after admin approval.',
+        },
       }))
       setReviewDrafts((prev) => ({
         ...prev,

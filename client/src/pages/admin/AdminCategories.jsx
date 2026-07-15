@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   adminCreateCategoryUpload,
   adminDeleteCategory,
@@ -10,6 +10,7 @@ import {
   adminUpdateCategory,
 } from "../../api/adminApi";
 import UploadProgressBar from "../../components/admin/UploadProgressBar";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 
 const AdminCategories = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,13 +23,14 @@ const AdminCategories = () => {
   const [categories, setCategories] = useState([]);
   const [deletingId, setDeletingId] = useState("");
   const [parentOptions, setParentOptions] = useState([]);
-  const [expandedNodes, setExpandedNodes] = useState({});
   const [childrenByParentId, setChildrenByParentId] = useState({});
   const [loadingChildrenByParentId, setLoadingChildrenByParentId] = useState({});
   const [statusAction, setStatusAction] = useState({ id: "", type: "" });
   const [editingCategoryId, setEditingCategoryId] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  /** Breadcrumb trail: [{ id, name }, ...] from root → current folder */
+  const [browsePath, setBrowsePath] = useState([]);
 
   useEffect(() => {
     fetchAllCategories();
@@ -83,6 +85,18 @@ const AdminCategories = () => {
     return true;
   };
 
+  const currentParent = browsePath.length ? browsePath[browsePath.length - 1] : null;
+  const currentParentId = currentParent?.id || "";
+
+  const visibleCategories = useMemo(() => {
+    if (!currentParentId) return categories;
+    return childrenByParentId[currentParentId] || [];
+  }, [categories, childrenByParentId, currentParentId]);
+
+  const isLoadingCurrentLevel = Boolean(
+    currentParentId && loadingChildrenByParentId[currentParentId]
+  );
+
   const loadChildCategories = async (parentId) => {
     if (!parentId) return [];
     setLoadingChildrenByParentId((prev) => ({ ...prev, [parentId]: true }));
@@ -100,20 +114,26 @@ const AdminCategories = () => {
     }
   };
 
-  const handleToggleExpand = async (cat) => {
+  const openCategoryFolder = async (cat) => {
     const categoryId = getCategoryId(cat);
     if (!categoryId) return;
-
-    const isExpanded = !!expandedNodes[categoryId];
-    if (isExpanded) {
-      setExpandedNodes((prev) => ({ ...prev, [categoryId]: false }));
-      return;
-    }
-
     if (!Object.prototype.hasOwnProperty.call(childrenByParentId, categoryId)) {
       await loadChildCategories(categoryId);
     }
-    setExpandedNodes((prev) => ({ ...prev, [categoryId]: true }));
+    setBrowsePath((prev) => [...prev, { id: categoryId, name: cat.name || "Category" }]);
+  };
+
+  const goToBreadcrumb = async (index) => {
+    if (index < 0) {
+      setBrowsePath([]);
+      return;
+    }
+    const nextPath = browsePath.slice(0, index + 1);
+    const target = nextPath[nextPath.length - 1];
+    if (target?.id && !Object.prototype.hasOwnProperty.call(childrenByParentId, target.id)) {
+      await loadChildCategories(target.id);
+    }
+    setBrowsePath(nextPath);
   };
 
   const handleChange = (e) => {
@@ -128,7 +148,7 @@ const AdminCategories = () => {
   const resetCategoryForm = () => {
     setCategory({
       name: "",
-      parent: "",
+      parent: currentParentId || "",
       description: "",
       image: null,
     });
@@ -144,7 +164,13 @@ const AdminCategories = () => {
   };
 
   const openCreateModal = () => {
-    resetCategoryForm();
+    setEditingCategoryId("");
+    setCategory({
+      name: "",
+      parent: currentParentId || "",
+      description: "",
+      image: null,
+    });
     setIsOpen(true);
   };
 
@@ -174,9 +200,11 @@ const AdminCategories = () => {
       await adminDeleteCategory(categoryId);
       await fetchAllCategories();
       await fetchRootCategories();
-      setExpandedNodes({});
       setChildrenByParentId({});
       setLoadingChildrenByParentId({});
+      const deletedInPath = browsePath.some((item) => item.id === categoryId);
+      if (deletedInPath) setBrowsePath([]);
+      else if (currentParentId) await loadChildCategories(currentParentId);
     } catch (error) {
       console.error("Error deleting category tree:", error);
     } finally {
@@ -187,9 +215,11 @@ const AdminCategories = () => {
   const refreshCategoryData = async () => {
     await fetchAllCategories();
     await fetchRootCategories();
-    setExpandedNodes({});
     setChildrenByParentId({});
     setLoadingChildrenByParentId({});
+    if (currentParentId) {
+      await loadChildCategories(currentParentId);
+    }
   };
 
   const handleEnableTree = async (categoryId) => {
@@ -252,15 +282,15 @@ const AdminCategories = () => {
     }
   };
 
-  const renderCategoryNode = (cat, level = 0, parentLabel = "Main Category") => {
+  const hierarchyLabel = useMemo(() => {
+    if (!browsePath.length) return "All Categories";
+    return ["All Categories", ...browsePath.map((item) => item.name)].join(" › ");
+  }, [browsePath]);
+
+  const renderCategoryCard = (cat) => {
     const categoryId = getCategoryId(cat);
     if (!categoryId) return null;
 
-    const isExpanded = !!expandedNodes[categoryId];
-    const isLoadingChildren = !!loadingChildrenByParentId[categoryId];
-    const children = childrenByParentId[categoryId] || [];
-    const imageHeightClass = level === 0 ? "h-44" : "h-36";
-    const nestedOffset = Math.min(level * 16, 80);
     const enabled = isCategoryEnabled(cat);
     const isEnableLoading =
       statusAction.id === categoryId && statusAction.type === "enable";
@@ -268,18 +298,27 @@ const AdminCategories = () => {
       statusAction.id === categoryId && statusAction.type === "disable";
     const isAnyStatusActionLoading =
       statusAction.id === categoryId && statusAction.type !== "";
+    const cardTrail = [
+      ...browsePath.map((item) => item.name),
+      cat.name || "Category",
+    ];
+    const imageSrc = resolveMediaUrl(cat.image || "");
 
     return (
-      <div key={`${categoryId}-${level}`} className="space-y-2">
-        <div
-          onClick={() => handleToggleExpand(cat)}
-          className="group bg-white border border-gray-200 rounded-xl p-3 transition-all hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
-          style={{ marginLeft: `${nestedOffset}px` }}
+      <div
+        key={categoryId}
+        className="group bg-white border border-gray-200 rounded-xl p-3 transition-all hover:shadow-md hover:-translate-y-0.5"
+      >
+        <button
+          type="button"
+          onClick={() => openCategoryFolder(cat)}
+          className="w-full cursor-pointer text-left"
+          title="Open category"
         >
-          <div className={`w-full ${imageHeightClass} rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center p-3`}>
-            {cat.image ? (
+          <div className="w-full h-40 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center p-3">
+            {imageSrc ? (
               <img
-                src={cat.image}
+                src={imageSrc}
                 alt={cat.name}
                 className="w-full h-full object-contain"
               />
@@ -287,90 +326,91 @@ const AdminCategories = () => {
               <span className="text-xs font-semibold text-gray-400">No Image</span>
             )}
           </div>
+        </button>
 
-          <div className="min-w-0 flex-1 mt-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-semibold text-gray-800 truncate">{cat.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Parent: {parentLabel}</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded-md">
-                  {isExpanded ? "Hide" : "Show"}
+        <div className="min-w-0 flex-1 mt-3">
+          <nav
+            className="mb-1.5 flex flex-wrap items-center gap-1 text-[11px] text-slate-500"
+            aria-label="Category hierarchy"
+          >
+            {cardTrail.map((part, index) => (
+              <React.Fragment key={`${categoryId}-crumb-${index}`}>
+                {index > 0 ? <span className="text-slate-300">›</span> : null}
+                <span
+                  className={
+                    index === cardTrail.length - 1
+                      ? "font-semibold text-slate-800"
+                      : ""
+                  }
+                >
+                  {part}
                 </span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEditModal(cat);
-                  }}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteCategory(categoryId, cat.name);
-                  }}
-                  disabled={deletingId === categoryId}
-                  className="text-xs text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
-                >
-                  {deletingId === categoryId ? "Deleting..." : "Delete"}
-                </button>
-              </div>
+              </React.Fragment>
+            ))}
+          </nav>
+
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-800 truncate">{cat.name}</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Level {typeof cat.level === "number" ? cat.level : browsePath.length}
+              </p>
             </div>
-            {cat.description && (
-              <p className="text-xs text-gray-500 mt-1 line-clamp-2">{cat.description}</p>
-            )}
-            <div
-              className="flex flex-wrap gap-2 mt-3"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => handleEnableTree(categoryId)}
-                disabled={isAnyStatusActionLoading || enabled}
-                className={`text-xs px-2.5 py-1.5 rounded-lg transition ${enabled
-                  ? "bg-gray-200 text-gray-500 blur-[0.5px] cursor-not-allowed"
+                onClick={() => openCategoryFolder(cat)}
+                className="cursor-pointer text-xs text-teal-700 hover:text-teal-800 font-medium"
+              >
+                Open
+              </button>
+              <button
+                type="button"
+                onClick={() => openEditModal(cat)}
+                className="cursor-pointer text-xs text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteCategory(categoryId, cat.name)}
+                disabled={deletingId === categoryId}
+                className="cursor-pointer text-xs text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
+              >
+                {deletingId === categoryId ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+          {cat.description && (
+            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{cat.description}</p>
+          )}
+          <div className="flex flex-wrap gap-2 mt-3">
+            <button
+              type="button"
+              onClick={() => handleEnableTree(categoryId)}
+              disabled={isAnyStatusActionLoading || enabled}
+              className={`cursor-pointer text-xs px-2.5 py-1.5 rounded-lg transition ${
+                enabled
+                  ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                   : "bg-emerald-600 text-white hover:bg-emerald-700"
-                  } disabled:opacity-70`}
-              >
-                {isEnableLoading
-                  ? "Enabling..."
-                  : "Enable tree"}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDisableTree(categoryId)}
-                disabled={isAnyStatusActionLoading || !enabled}
-                className={`text-xs px-2.5 py-1.5 rounded-lg transition ${enabled
+              } disabled:opacity-70`}
+            >
+              {isEnableLoading ? "Enabling..." : "Enable tree"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDisableTree(categoryId)}
+              disabled={isAnyStatusActionLoading || !enabled}
+              className={`cursor-pointer text-xs px-2.5 py-1.5 rounded-lg transition ${
+                enabled
                   ? "bg-amber-600 text-white hover:bg-amber-700"
-                  : "bg-gray-200 text-gray-500 blur-[0.5px] cursor-not-allowed"
-                  } disabled:opacity-70`}
-              >
-                {isDisableLoading
-                  ? "Disabling..."
-                  : "Disable tree"}
-              </button>
-            </div>
+                  : "bg-gray-200 text-gray-500 cursor-not-allowed"
+              } disabled:opacity-70`}
+            >
+              {isDisableLoading ? "Disabling..." : "Disable tree"}
+            </button>
           </div>
         </div>
-
-        {isExpanded && (
-          <div className="space-y-2">
-            {isLoadingChildren ? (
-              <p className="text-xs text-gray-500" style={{ marginLeft: `${Math.min((level + 1) * 16, 96)}px` }}>
-                Loading child categories...
-              </p>
-            ) : children.length === 0 ? (
-              <p className="text-xs text-gray-500" style={{ marginLeft: `${Math.min((level + 1) * 16, 96)}px` }}>
-                No child categories
-              </p>
-            ) : (
-              children.map((child) => renderCategoryNode(child, level + 1, cat.name))
-            )}
-          </div>
-        )}
       </div>
     );
   };
@@ -380,26 +420,73 @@ const AdminCategories = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Category Management</h2>
         <button
+          type="button"
           onClick={openCreateModal}
-          className="bg-gradient-to-r from-black to-gray-700 text-white px-4 py-2 rounded-lg text-sm shadow-md hover:scale-105 transition"
+          className="cursor-pointer bg-gradient-to-r from-black to-gray-700 text-white px-4 py-2 rounded-lg text-sm shadow-md hover:scale-105 transition"
         >
           + Create Category
         </button>
       </div>
 
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Main Categories</h3>
+        <nav
+          className="mb-4 flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
+          aria-label="Category breadcrumb"
+        >
+          <button
+            type="button"
+            onClick={() => goToBreadcrumb(-1)}
+            className={`cursor-pointer rounded-md px-2 py-1 font-medium transition ${
+              browsePath.length === 0
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-teal-700 hover:bg-white hover:text-teal-900"
+            }`}
+          >
+            All Categories
+          </button>
+          {browsePath.map((item, index) => (
+            <React.Fragment key={item.id}>
+              <span className="text-slate-300" aria-hidden>
+                ›
+              </span>
+              <button
+                type="button"
+                onClick={() => goToBreadcrumb(index)}
+                className={`cursor-pointer rounded-md px-2 py-1 font-medium transition ${
+                  index === browsePath.length - 1
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-teal-700 hover:bg-white hover:text-teal-900"
+                }`}
+              >
+                {item.name}
+              </button>
+            </React.Fragment>
+          ))}
+        </nav>
+
+        <div className="flex items-center justify-between mb-4 gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">
+              {currentParent ? currentParent.name : "Main Categories"}
+            </h3>
+            <p className="mt-0.5 text-xs text-slate-500">{hierarchyLabel}</p>
+          </div>
           <span className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 font-medium">
-            {categories.length} total
+            {visibleCategories.length} here
           </span>
         </div>
 
-        {categories.length === 0 ? (
-          <p className="text-gray-500 text-sm">No categories found</p>
+        {isLoadingCurrentLevel ? (
+          <p className="text-gray-500 text-sm">Loading categories...</p>
+        ) : visibleCategories.length === 0 ? (
+          <p className="text-gray-500 text-sm">
+            {currentParent
+              ? "No child categories in this folder. Create one with the current parent selected."
+              : "No categories found"}
+          </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {categories?.map((cat) => renderCategoryNode(cat))}
+            {visibleCategories.map((cat) => renderCategoryCard(cat))}
           </div>
         )}
       </div>
@@ -412,15 +499,23 @@ const AdminCategories = () => {
                 {editingCategoryId ? "Edit Category" : "Create Category"}
               </h3>
               <button
+                type="button"
                 onClick={() => {
                   setIsOpen(false);
                   resetCategoryForm();
                 }}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500"
+                className="cursor-pointer w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500"
               >
                 ✕
               </button>
             </div>
+
+            {!editingCategoryId && browsePath.length > 0 ? (
+              <p className="mb-4 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                Creating under:{" "}
+                <span className="font-semibold text-slate-800">{hierarchyLabel}</span>
+              </p>
+            ) : null}
 
             <div className="flex flex-col gap-4">
               <div>
@@ -441,7 +536,7 @@ const AdminCategories = () => {
                   name="parent"
                   value={category.parent}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-black outline-none"
+                  className="w-full cursor-pointer border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-black outline-none"
                 >
                   <option value="">None (Main Category)</option>
                   {parentOptions.map((option) => (
@@ -481,18 +576,20 @@ const AdminCategories = () => {
 
               <div className="flex justify-end gap-3 mt-4">
                 <button
+                  type="button"
                   onClick={() => {
                     setIsOpen(false);
                     resetCategoryForm();
                   }}
-                  className="px-4 py-2 border rounded-lg"
+                  className="cursor-pointer px-4 py-2 border rounded-lg"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleSubmit}
                   disabled={saving}
-                  className="bg-black text-white px-4 py-2 rounded-lg disabled:opacity-60"
+                  className="cursor-pointer bg-black text-white px-4 py-2 rounded-lg disabled:opacity-60"
                 >
                   {saving ? "Uploading…" : editingCategoryId ? "Update" : "Save"}
                 </button>

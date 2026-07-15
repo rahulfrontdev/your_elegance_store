@@ -18,6 +18,8 @@ const discountRoutes = require('./routes/discountRoutes');
 const catalogRoutes = require('./routes/catalogRoutes');
 const addressRoutes = require('./routes/addressRoutes');
 const reelRoutes = require('./routes/reelRoutes');
+const userRoutes = require('./routes/userRoutes');
+const reviewRoutes = require('./routes/reviewRoutes');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 // const subCategoryRoutes = require('./routes/subCategoryRoutes');
 
@@ -45,6 +47,8 @@ app.use('/api/discounts', discountRoutes);
 app.use('/api/catalogs', catalogRoutes);
 app.use('/api/address', addressRoutes);
 app.use('/api/reels', reelRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'E-commerce API is running' });

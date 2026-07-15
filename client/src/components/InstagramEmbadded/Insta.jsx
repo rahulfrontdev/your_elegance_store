@@ -64,7 +64,7 @@ const Insta = () => {
     [reels]
   )
 
-  if (status === 'failed' || (status === 'succeeded' && activeReels.length === 0)) {
+  if (status === 'succeeded' && activeReels.length === 0) {
     return null
   }
 
@@ -82,6 +82,10 @@ const Insta = () => {
 
         {status === 'loading' ? (
           <p className="py-8 text-center text-sm text-neutral-500">Loading reels...</p>
+        ) : status === 'failed' ? (
+          <p className="py-8 text-center text-sm text-neutral-500">
+            Reels could not be loaded. Check that the API is running and try again.
+          </p>
         ) : (
           <div className="grid gap-4 overflow-x-clip sm:grid-cols-2 lg:grid-cols-3">
             {activeReels.map((reel) => (

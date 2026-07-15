@@ -2,7 +2,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const navLinkClass = ({ isActive }) =>
-  `block rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 ${isActive
+  `block cursor-pointer rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 ${isActive
     ? 'bg-white text-black shadow-sm'
     : 'text-gray-400 hover:bg-gray-800 hover:text-white'
   }`
@@ -38,9 +38,12 @@ const AdminLayout = () => {
           <NavLink to="/admin/products" className={navLinkClass}>
             Products
           </NavLink>
-          {/* <NavLink to="/admin/users" className={navLinkClass}>
-            Users
-          </NavLink> */}
+          <NavLink to="/admin/users" className={navLinkClass}>
+            Customers
+          </NavLink>
+          <NavLink to="/admin/reviews" className={navLinkClass}>
+            Reviews
+          </NavLink>
           <NavLink to="/admin/carousel" className={navLinkClass}>
             Home Promotional
           </NavLink>
@@ -68,7 +71,7 @@ const AdminLayout = () => {
               logout()
               navigate('/login', { replace: true })
             }}
-            className="w-full rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-gray-200 transition"
+            className="w-full cursor-pointer rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-gray-200 transition"
           >
             Log out
           </button>

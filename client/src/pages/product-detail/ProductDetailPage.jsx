@@ -254,7 +254,12 @@ const ProductDetailPage = () => {
       (Array.isArray(productRaw?.reviews) && productRaw.reviews) ||
       (Array.isArray(productRaw?.ratings) && productRaw.ratings) ||
       []
-    const reviews = reviewsRaw.map((review, index) => ({
+    const reviews = reviewsRaw
+      .filter((review) => {
+        const status = String(review?.status || 'approved').toLowerCase()
+        return status === 'approved'
+      })
+      .map((review, index) => ({
       id: review?._id || review?.id || `${id}-review-${index}`,
       userName:
         review?.user?.name ||

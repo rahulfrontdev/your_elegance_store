@@ -67,8 +67,14 @@ async function saveUploadedFile(file, subdir = 'misc') {
     await fs.promises.unlink(file.path).catch(() => {});
   }
 
+  // Store relative paths so the client can resolve them via VITE_MEDIA_ORIGIN / API origin.
+  // Absolute public URL is still available for callers that need it.
   const relativePath = `/uploads/${subdir}/${filename}`;
-  return { url: toPublicUrl(relativePath), relativePath };
+  return {
+    url: relativePath,
+    relativePath,
+    publicUrl: toPublicUrl(relativePath),
+  };
 }
 
 module.exports = {

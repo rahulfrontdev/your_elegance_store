@@ -36,6 +36,7 @@ const AdminDiscounts = lazy(() => import('../pages/admin/AdminDiscounts'))
 const AdminCatalogs = lazy(() => import('../pages/admin/AdminCatalogs'))
 const AdminReels = lazy(() => import('../pages/admin/AdminReels'))
 const AdminReports = lazy(() => import('../pages/admin/AdminReports'))
+const AdminReviews = lazy(() => import('../pages/admin/AdminReviews'))
 
 const AdminRouteFallback = () => (
   <div className="flex min-h-[40vh] items-center justify-center text-sm text-neutral-600">Loading admin…</div>
@@ -92,6 +93,14 @@ const AppRoutes = () => {
           element={
             <Suspense fallback={<AdminRouteFallback />}>
               <AdminUsers />
+            </Suspense>
+          }
+        />
+        <Route
+          path="reviews"
+          element={
+            <Suspense fallback={<AdminRouteFallback />}>
+              <AdminReviews />
             </Suspense>
           }
         />

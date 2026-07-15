@@ -10,7 +10,7 @@ const generateToken = (id) => {
 // POST /api/auth/register
 const register = async (req, res) => {
   try {
-    const { name, mobile, email, password, role } = req.body;
+    const { name, mobile, email, password } = req.body;
 
     if (!name || !mobile || !password) {
       return res.status(400).json({ message: 'Name, mobile and password are required' });
@@ -28,12 +28,13 @@ const register = async (req, res) => {
       }
     }
 
+    // Public registration is always customer — admin role cannot be self-assigned
     const user = await User.create({
       name,
       mobile,
       email: email || undefined,
       password,
-      role   
+      role: 'customer',
     });
 
     res.status(201).json({

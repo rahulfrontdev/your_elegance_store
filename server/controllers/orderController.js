@@ -6,6 +6,7 @@ const { calculateOrderPricing } = require('../services/pricingEngine');
 const discountService = require('../services/discountService');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const { recalculateApprovedRating } = require('../utils/reviewUtils');
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 const CANCELABLE_ORDER_STATUSES = ['Pending', 'Confirmed'];
@@ -581,36 +582,36 @@ exports.addProductReview = asyncHandler(async (req, res) => {
     existingReview.rating = parsedRating;
     existingReview.comment = String(comment || '').trim();
     existingReview.name = req.user.name;
+    existingReview.orderId = order._id;
+    // Re-submit for moderation whenever the customer edits
+    existingReview.status = 'pending';
+    existingReview.moderatedAt = null;
+    existingReview.moderatedBy = null;
   } else {
     product.reviews.push({
       user: req.user._id,
       name: req.user.name,
       rating: parsedRating,
       comment: String(comment || '').trim(),
+      status: 'pending',
+      orderId: order._id,
     });
   }
 
-  product.numReviews = product.reviews.length;
-  product.rating =
-    product.numReviews === 0
-      ? 0
-      : Number(
-          (
-            product.reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) /
-            product.numReviews
-          ).toFixed(2)
-        );
+  recalculateApprovedRating(product);
 
   await product.save();
 
   return res.status(existingReview ? 200 : 201).json({
     success: true,
-    message: existingReview ? 'Review updated successfully' : 'Review added successfully',
+    message: existingReview
+      ? 'Review updated and sent for admin approval'
+      : 'Review submitted and waiting for admin approval',
     data: {
       productId: product._id,
       rating: product.rating,
       numReviews: product.numReviews,
-      reviews: product.reviews,
+      status: 'pending',
     },
   });
 });

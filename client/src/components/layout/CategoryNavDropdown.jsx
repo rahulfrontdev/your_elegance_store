@@ -1,8 +1,7 @@
 import { useCallback } from 'react'
 import { flushSync } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
 import { useNavDropdown } from '../../context/NavDropdownContext'
-import CategoryNavTree from './CategoryNavTree'
+import CategoryNavCascade from './CategoryNavCascade'
 
 const CategoryNavDropdown = ({
   category,
@@ -13,8 +12,7 @@ const CategoryNavDropdown = ({
   onTriggerClick,
   onNavigate,
 }) => {
-  const navigate = useNavigate()
-  const { scrollNavVisible, prefersClickNav } = useNavDropdown()
+  const { scrollNavVisible, prefersClickNav, open, scheduleClose } = useNavDropdown()
   const isScroll = variant === 'scroll'
   const isActiveNav = isScroll ? scrollNavVisible : !scrollNavVisible
   const showDesktopPanel = isOpen && isActiveNav && !prefersClickNav
@@ -32,15 +30,9 @@ const CategoryNavDropdown = ({
     flushSync(() => onNavigate?.())
   }, [onNavigate])
 
-  const activateMenuLink = useCallback(
-    (to) => (event) => {
-      event.preventDefault()
-      event.stopPropagation()
-      closeMenu()
-      navigate(to)
-    },
-    [closeMenu, navigate]
-  )
+  const keepOpen = useCallback(() => {
+    open(category.id)
+  }, [open, category.id])
 
   const handleTriggerClick = (event) => {
     event.stopPropagation()
@@ -57,19 +49,6 @@ const CategoryNavDropdown = ({
     if (prefersClickNav) return
     onMouseLeave()
   }
-
-  const panelInner = (
-    <div className={panelInnerClass}>
-      <a
-        href={category.to}
-        className="category-nav-tree__link"
-        onClick={activateMenuLink(category.to)}
-      >
-        All {category.name}
-      </a>
-      <CategoryNavTree nodes={category.children} onMenuLinkActivate={closeMenu} />
-    </div>
-  )
 
   return (
     <div
@@ -88,7 +67,16 @@ const CategoryNavDropdown = ({
       </button>
       {showDesktopPanel && (
         <div className={panelClass} role="menu">
-          {panelInner}
+          <div className={`${panelInnerClass} category-nav-cascade-shell`}>
+            <CategoryNavCascade
+              nodes={category.children}
+              rootLabel={category.name}
+              rootTo={category.to}
+              onMenuLinkActivate={closeMenu}
+              onKeepOpen={keepOpen}
+              onRequestClose={scheduleClose}
+            />
+          </div>
         </div>
       )}
     </div>

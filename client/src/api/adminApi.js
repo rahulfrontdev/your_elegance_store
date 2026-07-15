@@ -127,6 +127,14 @@ export const adminUpdateProduct = (id, body, options) =>
     : axiosInstance.put(`/products/${id}`, body)
 export const adminDeleteProduct = (id) => axiosInstance.delete(`/products/${id}`)
 
-/** Users (admin) */
-export const adminFetchUsers = () => axiosInstance.get('/users')
+/** Users / customers (admin) */
+export const adminFetchUsers = (params = {}) =>
+  axiosInstance.get('/users', { params })
+export const adminFetchUserById = (id) => axiosInstance.get(`/users/${id}`)
 export const adminUpdateUser = (id, body) => axiosInstance.patch(`/users/${id}`, body)
+
+/** Reviews moderation (admin) */
+export const adminFetchReviews = (params = {}) =>
+  axiosInstance.get('/reviews', { params })
+export const adminModerateReview = (productId, reviewId, body) =>
+  axiosInstance.patch(`/reviews/${productId}/${reviewId}`, body)

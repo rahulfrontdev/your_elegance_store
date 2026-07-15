@@ -37,12 +37,19 @@ const ProductCard = ({ product, returnPath = '/products' }) => {
             src={imageSrc}
             alt={product?.name || 'Product'}
             className="h-full w-full object-contain object-center transition duration-500 group-hover:scale-[1.02]"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+              const fallback = e.currentTarget.nextElementSibling
+              if (fallback) fallback.hidden = false
+            }}
           />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center text-xs text-neutral-400">
-            No Image
-          </div>
-        )}
+        ) : null}
+        <div
+          hidden={Boolean(imageSrc)}
+          className="flex h-full w-full items-center justify-center text-xs text-neutral-400"
+        >
+          No Image
+        </div>
         {hasDiscount && discountPercent > 0 && (
           <span className="absolute left-2 top-2 rounded-md bg-rose-600 px-2 py-1 text-[10px] font-semibold text-white">
             {discountPercent}% OFF

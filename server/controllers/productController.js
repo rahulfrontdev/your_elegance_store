@@ -4,6 +4,10 @@ const Product = require('../models/Product');
 const Category = require('../models/Category');
 const { uploadOptimizedImage } = require('../utils/imageOptimizer');
 const { enrichProductsWithCampaignPricing } = require('../services/pricingEngine');
+const {
+  sanitizeProductReviewsForPublic,
+  sanitizeProductsReviewsForPublic,
+} = require('../utils/reviewUtils');
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -407,7 +411,7 @@ const getProducts = async (req, res) => {
       .sort('-createdAt')
       .lean();
     const productsWithDiscounts = await enrichProductsWithCampaignPricing(products);
-    return res.json(productsWithDiscounts);
+    return res.json(sanitizeProductsReviewsForPublic(productsWithDiscounts));
   } catch (error) {
     console.error('Get products error:', error.message);
     return res.status(500).json({ message: 'Server error' });
@@ -430,7 +434,7 @@ const getLatestProducts = async (req, res) => {
     const productsWithDiscounts = await enrichProductsWithCampaignPricing(products);
 
     return res.json({
-      data: productsWithDiscounts,
+      data: sanitizeProductsReviewsForPublic(productsWithDiscounts),
       count: productsWithDiscounts.length,
       limit,
     });
@@ -474,7 +478,7 @@ const getProductsByCategory = async (req, res) => {
     const productsWithDiscounts = await enrichProductsWithCampaignPricing(products);
 
     return res.json({
-      data: productsWithDiscounts,
+      data: sanitizeProductsReviewsForPublic(productsWithDiscounts),
       count: productsWithDiscounts.length,
       categoryId,
     });
@@ -508,7 +512,7 @@ const getBestDealProducts = async (req, res) => {
 
     return res.json({
       success: true,
-      data: bestDeals,
+      data: sanitizeProductsReviewsForPublic(bestDeals),
       count: bestDeals.length,
       limit,
       minDiscountPercent,
@@ -532,7 +536,7 @@ const getProductById = async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
     const [productWithDiscount] = await enrichProductsWithCampaignPricing([product]);
-    return res.json(productWithDiscount);
+    return res.json(sanitizeProductReviewsForPublic(productWithDiscount));
   } catch (error) {
     console.error('Get product error:', error.message);
     return res.status(500).json({ message: 'Server error' });
