@@ -64,7 +64,7 @@ async function saveUploadedFile(file, subdir = 'misc') {
     await fs.promises.rename(file.path, destPath);
   } catch {
     await fs.promises.copyFile(file.path, destPath);
-    await fs.promises.unlink(file.path).catch(() => {});
+    await fs.promises.unlink(file.path).catch(() => { });
   }
 
   // Store relative paths so the client can resolve them via VITE_MEDIA_ORIGIN / API origin.

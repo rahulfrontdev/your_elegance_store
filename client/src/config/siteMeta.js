@@ -1,9 +1,11 @@
+import { PRODUCTION_SERVER_ORIGIN } from './api.js'
+
 export const SITE_NAME = 'Your Elegance Store'
 export const SITE_TAGLINE = 'Where Style Meets Sophistication'
 export const SITE_DESCRIPTION =
   'Shop elegant jewellery, bags, and curated fashion at Your Elegance Store. Discover timeless pieces with free shipping on orders above ₹999.'
 export const SITE_TITLE = `${SITE_NAME} | ${SITE_TAGLINE}`
-export const SITE_URL = 'http://98.81.77.254'
+export const SITE_URL = PRODUCTION_SERVER_ORIGIN
 export const SITE_OG_IMAGE = '/Themed_Logo.png'
 
 const ROUTE_TITLES = {

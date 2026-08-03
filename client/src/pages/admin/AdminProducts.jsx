@@ -26,7 +26,7 @@ function formatProductSaveError(error) {
   if (st === 401) return "Unauthorized (401). Log in again — admin JWT required for POST /products."
   if (st === 403) return "Forbidden (403). Your account must have role: admin."
   if (st === 404)
-    return "Not found (404). Ensure VITE_API_BASE_URL is the API root with /api (e.g. http://98.81.77.254/api)."
+    return "Not found (404). Ensure VITE_API_BASE_URL is the API root with /api (e.g. https://yourelegancestore.com/api)."
   if (error?.message === "Failed to fetch" || error?.name === "TypeError")
     return "Network error — is the API running? Check CORS and VITE_API_BASE_URL in .env."
   return error?.message || "Failed to save product. Please try again."

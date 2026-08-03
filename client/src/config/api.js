@@ -1,19 +1,29 @@
-/** EC2 public IP — used until DNS/SSL for yourelegancestore.in is live */
-export const PRODUCTION_SERVER_ORIGIN = 'http://98.81.77.254'
+/** Production site/API origin — used when env vars are missing or invalid in prod builds */
+export const PRODUCTION_SERVER_ORIGIN = 'https://yourelegancestore.com'
 
 /** Production API — used when VITE_API_BASE_URL is not set */
 export const PRODUCTION_API_BASE_URL = `${PRODUCTION_SERVER_ORIGIN}/api`
 
 export const PRODUCTION_API_ORIGIN = PRODUCTION_SERVER_ORIGIN
 
+const LOCAL_HOST_PATTERN = /localhost|127\.0\.0\.1|0\.0\.0\.0/i
+
+/** Ignore localhost URLs in production builds so .env.local never leaks into deploy. */
+function readEnvUrl(value) {
+  if (!value || !String(value).trim()) return ''
+  const trimmed = String(value).trim().replace(/\/+$/, '')
+  if (import.meta.env.PROD && LOCAL_HOST_PATTERN.test(trimmed)) {
+    return ''
+  }
+  return trimmed
+}
+
 /**
  * API base URL for axios (must end with /api).
  */
 export function getApiBaseUrl() {
-  const fromEnv = import.meta.env.VITE_API_BASE_URL
-  if (fromEnv && String(fromEnv).trim()) {
-    return String(fromEnv).trim().replace(/\/+$/, '')
-  }
+  const fromEnv = readEnvUrl(import.meta.env.VITE_API_BASE_URL)
+  if (fromEnv) return fromEnv
   return PRODUCTION_API_BASE_URL
 }
 
@@ -24,12 +34,10 @@ export function getApiOrigin() {
 
 /**
  * Origin for /uploads media.
- * Use VITE_MEDIA_ORIGIN when the API runs locally but images live on the server (EC2).
+ * Local dev can set VITE_MEDIA_ORIGIN in `.env.local` (gitignored).
  */
 export function getMediaOrigin() {
-  const fromEnv = import.meta.env.VITE_MEDIA_ORIGIN
-  if (fromEnv && String(fromEnv).trim()) {
-    return String(fromEnv).trim().replace(/\/+$/, '')
-  }
+  const fromEnv = readEnvUrl(import.meta.env.VITE_MEDIA_ORIGIN)
+  if (fromEnv) return fromEnv
   return getApiOrigin() || PRODUCTION_API_ORIGIN
 }
