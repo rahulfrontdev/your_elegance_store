@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const CarouselSlide = require('../models/CarouselSlide');
 const { saveUploadedFile } = require('../utils/localUpload');
+const { normalizeCarouselSlide } = require('../utils/mediaUrl');
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
@@ -28,7 +29,7 @@ exports.getActiveCarousel = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: slides,
+      data: slides.map(normalizeCarouselSlide),
       count: slides.length,
     });
   } catch (error) {
@@ -45,7 +46,7 @@ exports.getAllCarouselAdmin = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: slides,
+      data: slides.map(normalizeCarouselSlide),
       count: slides.length,
     });
   } catch (error) {
@@ -64,7 +65,7 @@ exports.getCarouselById = async (req, res) => {
     if (!slide) {
       return res.status(404).json({ success: false, message: 'Slide not found' });
     }
-    return res.status(200).json({ success: true, data: slide });
+    return res.status(200).json({ success: true, data: normalizeCarouselSlide(slide) });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

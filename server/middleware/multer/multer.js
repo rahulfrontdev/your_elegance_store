@@ -1,21 +1,7 @@
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
 const multer = require('multer');
 
-const UPLOAD_TMP = path.join(os.tmpdir(), 'yourelegance-uploads');
-
-if (!fs.existsSync(UPLOAD_TMP)) {
-  fs.mkdirSync(UPLOAD_TMP, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOAD_TMP),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || '') || '.bin';
-    cb(null, `${Date.now()}-${Math.random().toString(16).slice(2)}${ext}`);
-  },
-});
+/** Memory storage — write once to server/uploads in saveUploadedFile (no /tmp ENOENT). */
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,

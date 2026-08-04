@@ -599,6 +599,22 @@ const updateProduct = async (req, res) => {
         extraImageCount,
         nextHasVariations
       );
+
+      const uploadedImages = await uploadProductImages(
+        groupedFiles,
+        extraImageCount,
+        nextHasVariations
+      );
+      if (uploadedImages.error) {
+        return res.status(400).json({ message: uploadedImages.error });
+      }
+      if (uploadedImages.mainImageUrl) {
+        updates.imageUrl = uploadedImages.mainImageUrl;
+      }
+      if (uploadedImages.extraImageUrls.length > 0) {
+        updates.images = [...(product.images || []), ...uploadedImages.extraImageUrls];
+      }
+
       const resolvedVariations = await resolveVariationImageUrls(
         parsedVariationsRaw,
         variationImageFiles
@@ -638,20 +654,22 @@ const updateProduct = async (req, res) => {
       updates.gstRate = parsedGst;
     }
     if (imageUrl !== undefined) updates.imageUrl = imageUrl;
-    const uploadedImages = await uploadProductImages(
-      groupedFiles,
-      extraImageCount,
-      nextHasVariations
-    );
-    if (uploadedImages.error) {
-      return res.status(400).json({ message: uploadedImages.error });
-    }
-    if (uploadedImages.mainImageUrl) {
-      updates.imageUrl = uploadedImages.mainImageUrl;
-    }
-    // Append behavior for extra images: keep old extras and add newly uploaded extras.
-    if (uploadedImages.extraImageUrls.length > 0) {
-      updates.images = [...(product.images || []), ...uploadedImages.extraImageUrls];
+
+    if (variationsRaw === undefined) {
+      const uploadedImages = await uploadProductImages(
+        groupedFiles,
+        extraImageCount,
+        nextHasVariations
+      );
+      if (uploadedImages.error) {
+        return res.status(400).json({ message: uploadedImages.error });
+      }
+      if (uploadedImages.mainImageUrl) {
+        updates.imageUrl = uploadedImages.mainImageUrl;
+      }
+      if (uploadedImages.extraImageUrls.length > 0) {
+        updates.images = [...(product.images || []), ...uploadedImages.extraImageUrls];
+      }
     }
 
     const nextCategory = updates.category ?? product.category;

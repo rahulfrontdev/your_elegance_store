@@ -7,14 +7,27 @@ export const PRODUCTION_API_BASE_URL = `${PRODUCTION_SERVER_ORIGIN}/api`
 export const PRODUCTION_API_ORIGIN = PRODUCTION_SERVER_ORIGIN
 
 const LOCAL_HOST_PATTERN = /localhost|127\.0\.0\.1|0\.0\.0\.0/i
+const IPV4_HOST_PATTERN = /^\d{1,3}(\.\d{1,3}){3}$/
 
-/** Ignore localhost URLs in production builds so .env.local never leaks into deploy. */
+/** Ignore localhost / raw IP env URLs in production builds (use domain defaults). */
 function readEnvUrl(value) {
   if (!value || !String(value).trim()) return ''
   const trimmed = String(value).trim().replace(/\/+$/, '')
-  if (import.meta.env.PROD && LOCAL_HOST_PATTERN.test(trimmed)) {
+  if (!import.meta.env.PROD) return trimmed
+
+  if (LOCAL_HOST_PATTERN.test(trimmed) || /98\.81\.77\.254/.test(trimmed)) {
     return ''
   }
+
+  try {
+    const parsed = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`)
+    if (LOCAL_HOST_PATTERN.test(parsed.hostname) || IPV4_HOST_PATTERN.test(parsed.hostname)) {
+      return ''
+    }
+  } catch {
+    if (/98\.81\.77\.254|localhost|127\.0\.0\.1/i.test(trimmed)) return ''
+  }
+
   return trimmed
 }
 

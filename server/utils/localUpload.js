@@ -3,6 +3,8 @@ const path = require('path');
 const crypto = require('crypto');
 
 const UPLOAD_ROOT = path.join(__dirname, '..', 'uploads');
+const SAVED_UPLOAD = Symbol('savedUpload');
+const DEFAULT_PUBLIC_ORIGIN = 'https://yourelegancestore.com';
 
 const MIME_TO_EXT = {
   'image/jpeg': '.jpg',
@@ -33,7 +35,7 @@ const ensureDir = (dir) => {
 };
 
 const getPublicBaseUrl = () =>
-  String(process.env.API_PUBLIC_URL || 'http://98.81.77.254').replace(/\/+$/, '');
+  String(process.env.API_PUBLIC_URL || DEFAULT_PUBLIC_ORIGIN).replace(/\/+$/, '');
 
 const buildFilename = (originalName, mimetype) => {
   const fromName = path.extname(originalName || '').toLowerCase();
@@ -43,11 +45,44 @@ const buildFilename = (originalName, mimetype) => {
 
 const toPublicUrl = (relativePath) => `${getPublicBaseUrl()}${relativePath}`;
 
+const buildSavedResult = (relativePath) => ({
+  url: relativePath,
+  relativePath,
+  publicUrl: toPublicUrl(relativePath),
+});
+
+const writeUploadBuffer = async (file, destPath) => {
+  if (Buffer.isBuffer(file.buffer) && file.buffer.length > 0) {
+    await fs.promises.writeFile(destPath, file.buffer);
+    return;
+  }
+
+  if (!file.path) {
+    throw new Error('No upload data received. Please try again.');
+  }
+
+  const sourcePath = path.resolve(file.path);
+  if (!fs.existsSync(sourcePath)) {
+    throw new Error('Upload temp file is missing. Please try uploading again.');
+  }
+
+  try {
+    await fs.promises.rename(sourcePath, destPath);
+  } catch {
+    await fs.promises.copyFile(sourcePath, destPath);
+    await fs.promises.unlink(sourcePath).catch(() => {});
+  }
+};
+
 /**
  * Save a Multer file to server/uploads/{subdir} and return a public URL.
  */
 async function saveUploadedFile(file, subdir = 'misc') {
-  if (!file?.path) return null;
+  if (!file) return null;
+
+  if (file[SAVED_UPLOAD]) {
+    return file[SAVED_UPLOAD];
+  }
 
   const mimetype = resolveMime(file);
   if (!MIME_TO_EXT[mimetype]) {
@@ -61,20 +96,14 @@ async function saveUploadedFile(file, subdir = 'misc') {
   const destPath = path.join(destDir, filename);
 
   try {
-    await fs.promises.rename(file.path, destPath);
-  } catch {
-    await fs.promises.copyFile(file.path, destPath);
-    await fs.promises.unlink(file.path).catch(() => { });
+    await writeUploadBuffer(file, destPath);
+  } catch (err) {
+    return { error: err.message || 'Failed to save upload' };
   }
 
-  // Store relative paths so the client can resolve them via VITE_MEDIA_ORIGIN / API origin.
-  // Absolute public URL is still available for callers that need it.
-  const relativePath = `/uploads/${subdir}/${filename}`;
-  return {
-    url: relativePath,
-    relativePath,
-    publicUrl: toPublicUrl(relativePath),
-  };
+  const result = buildSavedResult(`/uploads/${subdir}/${filename}`);
+  file[SAVED_UPLOAD] = result;
+  return result;
 }
 
 module.exports = {

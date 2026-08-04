@@ -61,6 +61,8 @@ const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`API origin: ${process.env.API_PUBLIC_URL || 'https://yourelegancestore.com'}`);
+  console.log(`Upload storage: memory → ${path.join(__dirname, 'uploads')}`);
   startDiscountJobs();
 });
 

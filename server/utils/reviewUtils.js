@@ -1,3 +1,5 @@
+const { normalizeProductMedia } = require('./mediaUrl');
+
 const APPROVED = 'approved';
 const PENDING = 'pending';
 const REJECTED = 'rejected';
@@ -44,12 +46,12 @@ const sanitizeProductReviewsForPublic = (product) => {
           ).toFixed(2)
         );
 
-  return {
+  return normalizeProductMedia({
     ...product,
     reviews: approved,
     numReviews: approved.length,
     rating,
-  };
+  });
 };
 
 const sanitizeProductsReviewsForPublic = (products = []) =>
