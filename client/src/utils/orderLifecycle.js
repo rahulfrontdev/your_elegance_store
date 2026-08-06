@@ -51,7 +51,7 @@ export function resolveOrderLifecycle(order) {
     return {
       paymentMethod,
       paymentStatus: isPaid ? 'Paid' : titleStatus(rawPaymentStatus, 'Pending'),
-      orderStatus: isPaid ? 'Confirmed' : titleStatus(rawOrderStatus, 'Pending'),
+      orderStatus: isPaid ? titleStatus(rawOrderStatus, 'Confirmed') : titleStatus(rawOrderStatus, 'Pending'),
     }
   }
 

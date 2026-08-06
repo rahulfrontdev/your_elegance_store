@@ -14,7 +14,7 @@ function formatDate(iso) {
 }
 
 function canReviewOrder(orderStatus) {
-  return String(orderStatus || '').trim() === 'Delivered'
+  return String(orderStatus || '').trim().toLowerCase() === 'delivered'
 }
 
 const AccountOrderDetailsPage = () => {
@@ -70,6 +70,7 @@ const AccountOrderDetailsPage = () => {
             return {
               id: product?._id || product?.id || line?._id || line?.id || line?.productId || '',
               name: line?.name || product?.name || 'Product',
+              sku: String(line?.sku || product?.sku || '').trim(),
               image:
                 line?.imageUrl ||
                 line?.image ||
@@ -285,6 +286,9 @@ const AccountOrderDetailsPage = () => {
                       <span className="font-medium text-neutral-900">{item?.name || 'Product'}</span>
                       <span className="text-neutral-700">₹{Number(item?.lineTotal || 0).toLocaleString('en-IN')}</span>
                     </div>
+                    {item?.sku && (
+                      <p className="mt-1 text-xs font-medium text-neutral-600">SKU: {item.sku}</p>
+                    )}
                     {item?.description && (
                       <p className="mt-1 line-clamp-2 text-xs text-neutral-600">{item.description}</p>
                     )}

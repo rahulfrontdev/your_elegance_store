@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Calendar, MapPin, Package } from 'lucide-react'
+import { Calendar, MapPin, Package, Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import OptimizedImage from '../../components/common/OptimizedImage'
 import { useAuth } from '../../context/AuthContext.jsx'
@@ -51,6 +51,8 @@ const AccountOrdersPage = () => {
   const [cancelReason, setCancelReason] = useState('Ordered by mistake')
   const [cancelingId, setCancelingId] = useState('')
   const [feedback, setFeedback] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
 
   const loadOrders = useCallback(async () => {
     const userId = user?._id || user?.id
@@ -61,7 +63,8 @@ const AccountOrdersPage = () => {
 
     setIsLoading(true)
     try {
-      const { data } = await getUserOrdersRequest(userId)
+      const params = debouncedSearch ? { q: debouncedSearch } : {}
+      const { data } = await getUserOrdersRequest(userId, params)
 
       const list =
         (Array.isArray(data?.data) && data.data) ||
@@ -97,7 +100,12 @@ const AccountOrdersPage = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [user?._id, user?.id])
+  }, [user?._id, user?.id, debouncedSearch])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300)
+    return () => window.clearTimeout(timer)
+  }, [searchQuery])
 
   useEffect(() => {
     loadOrders()
@@ -145,9 +153,22 @@ const AccountOrdersPage = () => {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-neutral-900">My Orders</h2>
-        <p className="mt-1 text-sm text-neutral-600">Your recent purchases placed from the cart.</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-neutral-900">My Orders</h2>
+          <p className="mt-1 text-sm text-neutral-600">Your recent purchases placed from the cart.</p>
+        </div>
+        <label className="relative w-full sm:max-w-xs">
+          <span className="sr-only">Search orders</span>
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search by order ID or product…"
+            className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+          />
+        </label>
       </div>
 
       {feedback?.message && (
@@ -168,11 +189,14 @@ const AccountOrdersPage = () => {
           <p className="text-sm text-neutral-600">Loading your orders...</p>
         </div>
       ) : sortedOrders.length === 0 ? (
-
         <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
           <Package className="mx-auto mb-3 text-neutral-400" size={26} />
-          <p className="text-sm font-medium text-neutral-700">No orders yet.</p>
-          <p className="mt-1 text-xs text-neutral-500">Place an order to see it here.</p>
+          <p className="text-sm font-medium text-neutral-700">
+            {debouncedSearch ? 'No orders match your search.' : 'No orders yet.'}
+          </p>
+          <p className="mt-1 text-xs text-neutral-500">
+            {debouncedSearch ? 'Try a different order ID or product name.' : 'Place an order to see it here.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">

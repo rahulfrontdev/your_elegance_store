@@ -26,6 +26,16 @@ const pickProductImage = (product = {}) => {
   return '';
 };
 
+const pickProductSku = (product = {}) => {
+  const direct = String(product.sku || '').trim();
+  if (direct) return direct;
+  const variations = product.variations;
+  if (Array.isArray(variations) && variations.length === 1) {
+    return String(variations[0]?.sku || '').trim();
+  }
+  return '';
+};
+
 const computeRawDiscountOnAmount = (amount, discount) => {
   if (amount <= 0) return 0;
   let raw = 0;
@@ -219,6 +229,7 @@ async function calculateOrderPricing({ userId, items, discountCode }) {
       return {
         productId: row.product._id,
         name: row.product.name,
+        sku: pickProductSku(row.product),
         image: pickProductImage(row.product),
         quantity: row.quantity,
         unitOriginalPrice: row.unit,
@@ -312,6 +323,7 @@ async function calculateOrderPricing({ userId, items, discountCode }) {
     lines.push({
       productId: row.product._id,
       name: row.product.name,
+      sku: pickProductSku(row.product),
       image: pickProductImage(row.product),
       quantity: row.quantity,
       unitOriginalPrice: row.unit,

@@ -7,12 +7,13 @@ export const verifyOrderPaymentRequest = (body) =>
 
 export const getMyOrderByIdRequest = (orderId) => axiosInstance.get(`/orders/my/${orderId}`)
 
-export const getUserOrdersRequest = (userId) => axiosInstance.get(`/orders/user/${userId}`)
+export const getUserOrdersRequest = (userId, params = {}) =>
+  axiosInstance.get(`/orders/user/${userId}`, { params })
 
 export const cancelOrderRequest = (orderId, body) =>
   axiosInstance.patch(`/orders/${orderId}/cancel`, body)
 
-/** Admin-only: GET /orders/admin/all?page&limit&paymentStatus&orderStatus */
+/** Admin-only: GET /orders/admin/all?page&limit&paymentStatus&orderStatus&q */
 export const getAdminAllOrdersRequest = (params = {}) =>
   axiosInstance.get('/orders/admin/all', { params })
 

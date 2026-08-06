@@ -8,6 +8,7 @@ const orderItemSchema = new mongoose.Schema(
       required: true,
     },
     name: { type: String, required: true },
+    sku: { type: String, default: '', trim: true },
     image: { type: String, default: '', trim: true },
     quantity: { type: Number, required: true, min: 1 },
     price: { type: Number, required: true, min: 0 },
@@ -38,6 +39,7 @@ const appliedDiscountSnapshotSchema = new mongoose.Schema(
       {
         productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
         name: String,
+        sku: { type: String, default: '', trim: true },
         quantity: Number,
         unitOriginalPrice: Number,
         lineSubtotal: Number,
@@ -126,14 +128,6 @@ const orderSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-orderSchema.pre('validate', function (next) {
-  if (!this.orderId) {
-    const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
-    this.orderId = `ORD-${Date.now()}-${rand}`;
-  }
-  next();
-});
 
 module.exports = mongoose.model('Order', orderSchema);
 

@@ -7,6 +7,8 @@ const discountService = require('../services/discountService');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const { recalculateApprovedRating } = require('../utils/reviewUtils');
+const { generateOrderId } = require('../utils/orderIdGenerator');
+const { buildOrderSearchFilter } = require('../utils/orderSearch');
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 const CANCELABLE_ORDER_STATUSES = ['Pending', 'Confirmed'];
@@ -53,6 +55,7 @@ const mapItemsAndTotal = async (items = [], userId = null, discountCode = '') =>
     const row = {
       productId: l.productId,
       name: l.name,
+      sku: String(l.sku || '').trim(),
       image: l.image,
       quantity: l.quantity,
       price: Number((l.finalLineTotal / l.quantity).toFixed(2)),
@@ -76,6 +79,7 @@ const mapItemsAndTotal = async (items = [], userId = null, discountCode = '') =>
     lines: pricing.lines.map((l) => ({
       productId: l.productId,
       name: l.name,
+      sku: l.sku || '',
       quantity: l.quantity,
       unitOriginalPrice: l.unitOriginalPrice,
       lineSubtotal: l.lineSubtotal,
@@ -105,6 +109,50 @@ const pickProductImage = (product = {}) => {
   return '';
 };
 
+const pickProductSku = (product = {}) => {
+  const direct = String(product?.sku || '').trim();
+  if (direct) return direct;
+  const variations = product?.variations;
+  if (Array.isArray(variations) && variations.length === 1) {
+    return String(variations[0]?.sku || '').trim();
+  }
+  if (Array.isArray(variations)) {
+    const fromVariation = variations.map((v) => String(v?.sku || '').trim()).find(Boolean);
+    if (fromVariation) return fromVariation;
+  }
+  return '';
+};
+
+const resolveItemProductId = (item = {}) => {
+  const raw = item.productId ?? item.product;
+  if (!raw) return '';
+  if (typeof raw === 'object' && raw !== null) {
+    if (raw._id || raw.id) {
+      return String(raw._id || raw.id).trim();
+    }
+    return '';
+  }
+  return String(raw).trim();
+};
+
+const resolvePopulatedProduct = (item = {}) => {
+  const raw = item.productId ?? item.product;
+  if (raw && typeof raw === 'object' && !Array.isArray(raw) && (raw._id || raw.id || raw.sku || raw.name)) {
+    return raw;
+  }
+  return null;
+};
+
+const buildSnapshotSkuMap = (order = {}) => {
+  const map = new Map();
+  for (const line of order?.appliedDiscountSnapshot?.lines || []) {
+    const productId = resolveItemProductId({ productId: line?.productId });
+    const sku = String(line?.sku || '').trim();
+    if (productId && sku) map.set(productId, sku);
+  }
+  return map;
+};
+
 const withAddressFields = (order) => {
   if (!order) return order;
   const sa = order.shippingAddress;
@@ -130,41 +178,57 @@ const withAddressFields = (order) => {
 };
 
 const attachImagesToOrders = async (orders = []) => {
-  const missingImageProductIds = new Set();
+  const productIds = new Set();
 
   for (const order of orders) {
     for (const item of order.items || []) {
-      if (!String(item.image || '').trim() && item.productId) {
-        missingImageProductIds.add(String(item.productId));
+      const productId = resolveItemProductId(item);
+      if (productId && productId !== '[object Object]') {
+        productIds.add(productId);
       }
     }
   }
 
-  const imageByProductId = new Map();
-  if (missingImageProductIds.size > 0) {
+  const productMetaById = new Map();
+  if (productIds.size > 0) {
     const products = await Product.find(
-      { _id: { $in: Array.from(missingImageProductIds) } },
-      { imageUrl: 1, images: 1 }
+      { _id: { $in: Array.from(productIds) } },
+      { imageUrl: 1, images: 1, sku: 1, variations: 1 }
     ).lean();
     for (const p of products) {
-      imageByProductId.set(String(p._id), pickProductImage(p));
+      productMetaById.set(String(p._id), {
+        image: pickProductImage(p),
+        sku: pickProductSku(p),
+      });
     }
   }
 
-  return orders.map((order) =>
-    withAddressFields({
+  return orders.map((order) => {
+    const snapshotSkuByProductId = buildSnapshotSkuMap(order);
+
+    return withAddressFields({
       ...order,
       items: (order.items || []).map((item) => {
-        if (String(item.image || '').trim()) return item;
-        return { ...item, image: imageByProductId.get(String(item.productId)) || '' };
+        const productId = resolveItemProductId(item);
+        const populatedProduct = resolvePopulatedProduct(item);
+        const meta = productMetaById.get(productId) || {};
+        const snapshotSku = snapshotSkuByProductId.get(productId) || '';
+        const populatedSku = pickProductSku(populatedProduct || {});
+
+        return {
+          ...item,
+          productId: productId || item.productId,
+          image: String(item.image || '').trim() || meta.image || pickProductImage(populatedProduct || {}) || '',
+          sku: String(item.sku || '').trim() || snapshotSku || populatedSku || meta.sku || '',
+        };
       }),
-    })
-  );
+    });
+  });
 };
 
 const canReviewOrder = (order) => {
   if (!order) return false;
-  return order.orderStatus === 'Delivered';
+  return String(order.orderStatus || '').trim().toLowerCase() === 'delivered';
 };
 
 // POST /api/orders
@@ -193,7 +257,10 @@ exports.createOrder = asyncHandler(async (req, res) => {
     discountCode
   );
 
+  const orderId = await generateOrderId();
+
   const order = await Order.create({
+    orderId,
     user: req.user?._id || null,
     items: normalizedItems,
     shippingAddress: {
@@ -333,15 +400,23 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
   const limit = Number.isNaN(limitRaw) ? 50 : Math.min(100, Math.max(1, limitRaw));
   const skip = (page - 1) * limit;
 
-  const filter = {};
+  const andConditions = [];
   const paymentStatus = String(req.query.paymentStatus || '').trim();
   if (['Pending', 'Paid', 'Failed'].includes(paymentStatus)) {
-    filter.paymentStatus = paymentStatus;
+    andConditions.push({ paymentStatus });
   }
   const orderStatus = normalizeOrderStatus(req.query.orderStatus);
   if (orderStatus) {
-    filter.orderStatus = orderStatus;
+    andConditions.push({ orderStatus });
   }
+
+  const searchTerm = String(req.query.q || req.query.search || '').trim();
+  const searchFilter = await buildOrderSearchFilter(searchTerm, { lookupUsers: true });
+  if (searchFilter) {
+    andConditions.push(searchFilter);
+  }
+
+  const filter = andConditions.length ? { $and: andConditions } : {};
 
   const [orders, total] = await Promise.all([
     Order.find(filter)
@@ -349,6 +424,7 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
       .skip(skip)
       .limit(limit)
       .populate('user', 'name email mobile role')
+      .populate('items.productId', 'name sku imageUrl images variations')
       .lean(),
     Order.countDocuments(filter),
   ]);
@@ -440,7 +516,19 @@ exports.getOrdersByUser = asyncHandler(async (req, res) => {
     throw new Error('Not authorized to view these orders');
   }
 
-  const orders = await Order.find({ user: userId }).sort({ createdAt: -1 }).lean();
+  const andConditions = [{ user: userId }];
+  const searchTerm = String(req.query.q || req.query.search || '').trim();
+  const searchFilter = await buildOrderSearchFilter(searchTerm);
+  if (searchFilter) {
+    andConditions.push(searchFilter);
+  }
+
+  const filter = andConditions.length === 1 ? andConditions[0] : { $and: andConditions };
+
+  const orders = await Order.find(filter)
+    .sort({ createdAt: -1 })
+    .populate('items.productId', 'name sku imageUrl images variations')
+    .lean();
   const ordersWithImages = await attachImagesToOrders(orders);
   return res.status(200).json({ success: true, count: ordersWithImages.length, data: ordersWithImages });
 });
@@ -455,6 +543,7 @@ exports.getMyOrderDetails = asyncHandler(async (req, res) => {
 
   const order = await Order.findOne({ _id: id, user: req.user._id })
     .populate('user', 'name email mobile role')
+    .populate('items.productId', 'name sku imageUrl images variations')
     .lean();
   if (!order) {
     res.status(404);

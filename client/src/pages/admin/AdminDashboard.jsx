@@ -31,15 +31,36 @@ function formatDate(iso) {
   }
 }
 
-function normalizeOrderLines(items) {
+function resolveLineProductId(line) {
+  const raw = line?.productId ?? line?.product
+  if (!raw) return ''
+  if (typeof raw === 'object' && raw !== null) {
+    return String(raw._id || raw.id || '').trim()
+  }
+  return String(raw).trim()
+}
+
+function findSnapshotLine(order, line) {
+  const snapshotLines = order?.appliedDiscountSnapshot?.lines
+  if (!Array.isArray(snapshotLines)) return null
+  const productId = resolveLineProductId(line)
+  if (!productId) return null
+  return snapshotLines.find((snapLine) => resolveLineProductId(snapLine) === productId) || null
+}
+
+function normalizeOrderLines(items, order) {
   const list = Array.isArray(items) ? items : []
   return list
     .filter((line) => line != null && typeof line === 'object')
     .map((line, idx) => {
       const populated =
-        line.product && typeof line.product === 'object' && !Array.isArray(line.product)
+        (line.productId && typeof line.productId === 'object' && !Array.isArray(line.productId)
+          ? line.productId
+          : null) ||
+        (line.product && typeof line.product === 'object' && !Array.isArray(line.product)
           ? line.product
-          : null
+          : null)
+      const snapshotLine = findSnapshotLine(order, line)
       const raw =
         line.price ??
         line.unitPrice ??
@@ -54,9 +75,10 @@ function normalizeOrderLines(items) {
         fromTotal != null && Number.isFinite(fromTotal) ? fromTotal : raw ?? 0
       )
       return {
-        key: line.productId || line._id || idx,
-        name: line.name || populated?.name || 'Item',
-        qty: Number(line.quantity ?? line.qty ?? 1),
+        key: resolveLineProductId(line) || line._id || idx,
+        name: line.name || populated?.name || snapshotLine?.name || 'Item',
+        sku: String(line.sku || populated?.sku || snapshotLine?.sku || '').trim(),
+        qty: Number(line.quantity ?? line.qty ?? snapshotLine?.quantity ?? 1),
         price: Number.isFinite(price) ? price : 0,
       }
     })
@@ -82,12 +104,28 @@ function formatAddressPreview(addr) {
   return addr.addressLine1 ? String(addr.addressLine1).slice(0, 32) + (addr.addressLine1.length > 32 ? '…' : '') : '—'
 }
 
-function compactItemsSummary(items) {
-  const list = normalizeOrderLines(items)
-  if (list.length === 0) return { label: '—', totalQty: 0 }
+function formatLineSummary(line) {
+  return `${line.name} ×${line.qty}`
+}
+
+function compactItemsSummary(items, order) {
+  const list = normalizeOrderLines(items, order)
+  if (list.length === 0) return { label: '—', totalQty: 0, lines: [] }
   const totalQty = list.reduce((s, it) => s + it.qty, 0)
-  if (list.length === 1) return { label: `${list[0].name} ×${list[0].qty}`, totalQty }
-  return { label: `${list[0].name} ×${list[0].qty} +${list.length - 1} more`, totalQty }
+  if (list.length === 1) {
+    return { label: formatLineSummary(list[0]), totalQty, lines: list }
+  }
+  return {
+    label: `${formatLineSummary(list[0])} +${list.length - 1} more`,
+    totalQty,
+    lines: list,
+  }
+}
+
+function formatItemsSkuCell(lines = []) {
+  const withSku = lines.filter((line) => String(line.sku || '').trim())
+  if (withSku.length === 0) return null
+  return withSku
 }
 
 function normalizeOrderStatusValue(status) {
@@ -204,6 +242,8 @@ const AdminDashboard = () => {
   const [limit] = useState(50)
   const [paymentStatus, setPaymentStatus] = useState('')
   const [orderStatus, setOrderStatus] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [meta, setMeta] = useState({ total: 0, totalPages: 1 })
   const [detailRow, setDetailRow] = useState(null)
   const [statusUpdatingId, setStatusUpdatingId] = useState('')
@@ -220,6 +260,7 @@ const AdminDashboard = () => {
       const params = { page, limit }
       if (paymentStatus) params.paymentStatus = paymentStatus
       if (orderStatus) params.orderStatus = orderStatus
+      if (debouncedSearch) params.q = debouncedSearch
 
       const { data } = await getAdminAllOrdersRequest(params)
       const { list, total, totalPages } = normalizeOrdersPayload(data)
@@ -236,7 +277,16 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false)
     }
-  }, [page, limit, paymentStatus, orderStatus])
+  }, [page, limit, paymentStatus, orderStatus, debouncedSearch])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300)
+    return () => window.clearTimeout(timer)
+  }, [searchQuery])
+
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch])
 
   useEffect(() => {
     if (activeTab !== 'orders') return
@@ -320,8 +370,8 @@ const AdminDashboard = () => {
   const rows = useMemo(
     () =>
       orders.map((o) => {
-        const items = normalizeOrderLines(o?.items)
-        const { label: itemsCompact, totalQty } = compactItemsSummary(o?.items)
+        const items = normalizeOrderLines(o?.items, o)
+        const { label: itemsCompact, totalQty, lines: itemLines } = compactItemsSummary(o?.items, o)
         const lifecycle = resolveOrderLifecycle(o)
         return {
           id: o?._id || o?.id,
@@ -335,6 +385,8 @@ const AdminDashboard = () => {
             '—',
           items,
           itemsCompact,
+          itemLines,
+          skuLines: formatItemsSkuCell(itemLines),
           totalQty,
           addressText: formatShippingAddressMultiline(o?.shippingAddress),
           addressPreview: formatAddressPreview(o?.shippingAddress),
@@ -439,6 +491,16 @@ const AdminDashboard = () => {
       {activeTab === 'orders' && (
         <>
       <div className="flex flex-wrap items-end gap-3 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <label className="min-w-[220px] flex-1 text-sm">
+          <span className="mb-1 block text-xs font-medium text-neutral-500">Search orders</span>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Order ID, customer, email, SKU…"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-500 focus:ring-2 focus:ring-neutral-500/15"
+          />
+        </label>
         <label className="text-sm">
           <span className="mb-1 block text-xs font-medium text-neutral-500">Payment status</span>
           <select
@@ -537,6 +599,7 @@ const AdminDashboard = () => {
                 <th className="whitespace-nowrap px-3 py-2">Order</th>
                 <th className="whitespace-nowrap px-3 py-2">Customer</th>
                 <th className="max-w-[200px] px-3 py-2">Items</th>
+                <th className="whitespace-nowrap px-3 py-2">SKU</th>
                 <th className="whitespace-nowrap px-3 py-2">Total</th>
                 <th className="whitespace-nowrap px-3 py-2">Payment</th>
                 <th className="whitespace-nowrap px-3 py-2">Pay status</th>
@@ -548,14 +611,14 @@ const AdminDashboard = () => {
             <tbody className="divide-y divide-neutral-100">
               {loading && rows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-neutral-500">
+                  <td colSpan={10} className="px-4 py-8 text-center text-neutral-500">
                     Loading orders…
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-neutral-500">
-                    No orders found.
+                  <td colSpan={10} className="px-4 py-8 text-center text-neutral-500">
+                    {debouncedSearch ? 'No orders match your search.' : 'No orders found.'}
                   </td>
                 </tr>
               ) : (
@@ -569,6 +632,19 @@ const AdminDashboard = () => {
                       <p className="line-clamp-2 leading-snug">{row.itemsCompact}</p>
                       {row.totalQty > 0 && (
                         <p className="mt-0.5 text-[10px] text-neutral-500">{row.totalQty} pc(s)</p>
+                      )}
+                    </td>
+                    <td className="max-w-[120px] px-3 py-2 align-middle text-xs text-neutral-700">
+                      {row.skuLines?.length ? (
+                        <div className="space-y-1">
+                          {row.skuLines.map((line) => (
+                            <p key={`${row.id}-${line.key}-${line.sku}`} className="font-mono text-[11px] leading-snug break-all">
+                              {line.sku}
+                            </p>
+                          ))}
+                        </div>
+                      ) : (
+                        '—'
                       )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 align-middle text-xs font-medium">₹{row.total.toLocaleString('en-IN')}</td>
@@ -653,6 +729,7 @@ const AdminDashboard = () => {
                     <thead className="bg-neutral-50 text-left text-xs text-neutral-500">
                       <tr>
                         <th className="px-3 py-2 font-medium">Product</th>
+                        <th className="px-3 py-2 font-medium">SKU</th>
                         <th className="px-3 py-2 font-medium">Qty</th>
                         <th className="px-3 py-2 font-medium">Unit</th>
                         <th className="px-3 py-2 font-medium">Subtotal</th>
@@ -662,6 +739,7 @@ const AdminDashboard = () => {
                       {detailRow.items.map((it, idx) => (
                         <tr key={`modal-${detailRow.id}-${idx}-${it.key}`}>
                           <td className="px-3 py-2 font-medium text-neutral-900">{it.name}</td>
+                          <td className="px-3 py-2 font-mono text-xs text-neutral-600">{it.sku || '—'}</td>
                           <td className="px-3 py-2 text-neutral-700">{it.qty}</td>
                           <td className="px-3 py-2 text-neutral-600">₹{Number(it?.price ?? 0).toLocaleString('en-IN')}</td>
                           <td className="px-3 py-2 font-medium text-neutral-900">
@@ -672,7 +750,7 @@ const AdminDashboard = () => {
                     </tbody>
                     <tfoot className="border-t border-neutral-200 bg-neutral-50 text-sm font-semibold">
                       <tr>
-                        <td colSpan={3} className="px-3 py-2 text-right text-neutral-600">
+                        <td colSpan={4} className="px-3 py-2 text-right text-neutral-600">
                           Total qty: {detailRow.totalQty}
                         </td>
                         <td className="px-3 py-2">₹{detailRow.total.toLocaleString('en-IN')}</td>
