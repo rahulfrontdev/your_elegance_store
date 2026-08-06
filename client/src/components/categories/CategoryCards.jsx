@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import OptimizedImage from '../common/OptimizedImage'
 import { fetchRootCategories } from '../../api/categoriesApi'
+import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 const CategoryCards = () => {
   const [categories, setCategories] = useState([])
@@ -34,9 +36,10 @@ const CategoryCards = () => {
               className="group w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-neutral-300 hover:shadow-lg"
             >
               <div className="relative h-52 w-full bg-gradient-to-br from-neutral-50 to-neutral-100 p-1 sm:h-56 sm:p-1.5 lg:h-64 xl:h-72">
-                <img
-                  src={cat.image}
+                <OptimizedImage
+                  src={resolveMediaUrl(cat.image)}
                   alt={cat.name}
+                  preset="category"
                   className="h-full w-full object-contain object-center bg-white transition-transform duration-500 group-hover:scale-[1.02]"
                 />
               </div>

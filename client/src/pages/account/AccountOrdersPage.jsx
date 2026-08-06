@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Calendar, MapPin, Package } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import OptimizedImage from '../../components/common/OptimizedImage'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { cancelOrderRequest, getUserOrdersRequest } from '../../api/orderApi'
 import { resolveOrderLifecycle } from '../../utils/orderLifecycle'
@@ -186,7 +187,7 @@ const AccountOrdersPage = () => {
                   <div className="flex min-w-0 gap-3">
                     {o.thumb ? (
                       <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-neutral-100">
-                        <img src={o.thumb} alt="" className="h-full w-full object-cover" />
+                        <OptimizedImage src={o.thumb} alt="" preset="thumb" variant="thumb" className="h-full w-full object-cover" />
                       </div>
                     ) : null}
                   <div className="min-w-0">

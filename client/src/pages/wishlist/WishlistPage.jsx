@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import OptimizedImage from '../../components/common/OptimizedImage'
 import { clearWishlist, deleteWishlistItem, fetchWishlist } from '../../api/wishlistApi'
 import { useAuth } from '../../context/AuthContext.jsx'
 
@@ -150,7 +151,13 @@ const WishlistPage = ({ showTitle = true }) => {
             >
               <div className="aspect-square overflow-hidden rounded-lg bg-neutral-100">
                 {item.image ? (
-                  <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                  <OptimizedImage
+                    src={item.image}
+                    alt={item.name}
+                    preset="thumb"
+                    variant="thumb"
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-xs text-neutral-400">
                     No Image

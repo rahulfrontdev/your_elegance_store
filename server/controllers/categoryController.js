@@ -2,7 +2,7 @@
 
 const Category = require("../models/Category");
 const slugify = require("slugify");
-const { saveUploadedFile } = require("../utils/localUpload");
+const { uploadOptimizedImage } = require("../utils/imageOptimizer");
 const multer = require("../middleware/multer/multer");
 
 /* -------------------- Helpers -------------------- */
@@ -89,11 +89,14 @@ exports.createCategory = async (req, res) => {
     let image = "";
 
     if (req.file) {
-      const saved = await saveUploadedFile(req.file, "categories");
-      if (saved?.error) {
-        return fail(res, 400, saved.error);
+      const savedUrl = await uploadOptimizedImage(req.file, "categories", "category");
+      if (typeof savedUrl === "object" && savedUrl?.error) {
+        return fail(res, 400, savedUrl.error);
       }
-      image = saved.url;
+      if (!savedUrl) {
+        return fail(res, 400, "Failed to save category image");
+      }
+      image = savedUrl;
     }
 
     const category = await Category.create({
@@ -283,11 +286,14 @@ exports.updateCategory = async (req, res) => {
     }
 
     if (req.file) {
-      const saved = await saveUploadedFile(req.file, "categories");
-      if (saved?.error) {
-        return fail(res, 400, saved.error);
+      const savedUrl = await uploadOptimizedImage(req.file, "categories", "category");
+      if (typeof savedUrl === "object" && savedUrl?.error) {
+        return fail(res, 400, savedUrl.error);
       }
-      updateData.image = saved.url;
+      if (!savedUrl) {
+        return fail(res, 400, "Failed to save category image");
+      }
+      updateData.image = savedUrl;
     }
 
     const updated = await Category.findByIdAndUpdate(

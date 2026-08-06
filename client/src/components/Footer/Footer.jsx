@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { STORE_EMAIL, STORE_LOCATION } from "../../config/siteMeta.js";
 
 const ACCOUNT_LINKS = [
     { label: "My Orders", to: "/account/orders" },
@@ -56,16 +57,11 @@ const Footer = () => {
 
                         <div className="space-y-2 text-sm text-gray-600">
                             <p>
-                                <a href="tel:+919009488488" className="hover:text-black">
-                                    +91 9009488488
+                                <a href={`mailto:${STORE_EMAIL}`} className="hover:text-black">
+                                    {STORE_EMAIL}
                                 </a>
                             </p>
-                            <p>
-                                <a href="mailto:info@yes.com" className="hover:text-black">
-                                    info@yes.com
-                                </a>
-                            </p>
-                            <p>Hyderabad, India</p>
+                            <p>{STORE_LOCATION}</p>
                         </div>
 
                         <div className="mt-4">

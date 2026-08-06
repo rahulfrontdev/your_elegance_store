@@ -7,7 +7,7 @@ import {
   adminUpdateCarouselSlide,
 } from '../../api/carouselApi'
 import UploadProgressBar from '../../components/admin/UploadProgressBar'
-import { normalizeCarouselSlideList, resolveCarouselImageUrl } from '../../utils/carouselMedia'
+import { normalizeCarouselSlideList, resolveCarouselImageUrl, HERO_BANNER_SPECS } from '../../utils/carouselMedia'
 
 const apiErrorText = (err, fallback) =>
   err?.response?.data?.message ||
@@ -166,10 +166,13 @@ const AdminCarousel = () => {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Home carousel</h1>
-          {/* <p className="mt-1 text-sm text-gray-600">
-            Manage hero slides via the API. Active slides are shown on the store home page
-
-          </p> */}
+          <p className="mt-1 text-sm text-gray-600">
+            Hero banners scale to screen width. Upload{' '}
+            <strong>
+              {HERO_BANNER_SPECS.width}×{HERO_BANNER_SPECS.height}px
+            </strong>{' '}
+            ({HERO_BANNER_SPECS.aspectRatioLabel}). {HERO_BANNER_SPECS.safeZone}
+          </p>
         </div>
         <button
           type="button"
@@ -194,6 +197,10 @@ const AdminCarousel = () => {
 
       <div className="mb-8 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-gray-900">Add slide</h2>
+        <p className="mt-1 text-xs text-gray-500">
+          Ideal size: {HERO_BANNER_SPECS.width}×{HERO_BANNER_SPECS.height}px ({HERO_BANNER_SPECS.aspectRatio}),{' '}
+          {HERO_BANNER_SPECS.formats}, max {HERO_BANNER_SPECS.maxFileSizeMb}MB.
+        </p>
 
         <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
           <label className="block min-w-[200px] flex-1 text-sm">

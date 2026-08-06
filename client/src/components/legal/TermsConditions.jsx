@@ -1,3 +1,5 @@
+import { STORE_EMAIL, STORE_PHONE, STORE_PHONE_TEL } from '../../config/siteMeta'
+
 const sectionClass =
   'scroll-mt-24 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8'
 
@@ -69,12 +71,12 @@ const TermsConditions = () => {
               products on the website shall be per the company&apos;s policy, which may be changed by
               Yourelegancestore.com from time to time. In case you receive a damaged product, please
               get in touch with our Customer Service Team on{' '}
-              <a href="tel:+919009488488" className="font-medium text-neutral-900 underline">
-                +91 9009488488
+              <a href={`tel:${STORE_PHONE_TEL}`} className="font-medium text-neutral-900 underline">
+                {STORE_PHONE}
               </a>{' '}
               (10 AM–5 PM) or write to us at{' '}
-              <a href="mailto:info@yes.com" className="font-medium text-neutral-900 underline">
-                info@yes.com
+              <a href={`mailto:${STORE_EMAIL}`} className="font-medium text-neutral-900 underline">
+                {STORE_EMAIL}
               </a>
               . Damage will be assessed based on the video provided by the customer during the
               opening of the box. For any claims, box opening video is a must.

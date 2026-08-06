@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Calendar, CreditCard, MapPin, Package } from 'lucide-react'
+import OptimizedImage from '../../components/common/OptimizedImage'
 import { getMyOrderByIdRequest, submitOrderReviewRequest } from '../../api/orderApi'
 import { resolveOrderLifecycle } from '../../utils/orderLifecycle'
 
@@ -108,7 +109,7 @@ const AccountOrderDetailsPage = () => {
             }
           }),
           totalAmount: Number(raw?.totalAmount ?? raw?.total ?? 0),
-          paymentMethod: lifecycle.paymentMethod || 'COD',
+          paymentMethod: lifecycle.paymentMethod || 'ONLINE',
           paymentStatus: lifecycle.paymentStatus,
           orderStatus: lifecycle.orderStatus,
           shippingAddress: raw?.shippingAddress || {},
@@ -266,7 +267,13 @@ const AccountOrderDetailsPage = () => {
                 <div className="flex gap-3">
                   <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white">
                     {item?.image ? (
-                      <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                      <OptimizedImage
+                        src={item.image}
+                        alt={item.name}
+                        preset="thumb"
+                        variant="thumb"
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-[10px] text-neutral-400">
                         No Image

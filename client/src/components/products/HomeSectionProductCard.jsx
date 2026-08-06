@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import OptimizedImage from '../common/OptimizedImage'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 const isActiveDiscount = (value) => value === true || value === 'true' || value === 1 || value === '1'
@@ -26,16 +27,26 @@ const HomeSectionProductCard = ({ product, className = '' }) => {
       to={`/products/${id}`}
       className={`group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-neutral-300 hover:shadow-lg ${className}`}
     >
-      <div className="relative h-44 overflow-hidden bg-gradient-to-br from-neutral-50 to-neutral-100 p-1.5 sm:p-2 lg:h-[264px]">
+      <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-neutral-50">
         {image ? (
-          <img
+          <OptimizedImage
             src={image}
             alt={name}
-            className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+            preset="card"
+            className="absolute inset-0 h-full w-full object-cover object-center"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+              const fallback = e.currentTarget.nextElementSibling
+              if (fallback) fallback.hidden = false
+            }}
           />
-        ) : (
-          <div className="flex h-full items-center justify-center text-xs text-neutral-400">No Image</div>
-        )}
+        ) : null}
+        <div
+          hidden={Boolean(image)}
+          className="absolute inset-0 flex items-center justify-center text-xs text-neutral-400"
+        >
+          No Image
+        </div>
         {hasDiscount && discountPercent > 0 && (
           <span className="absolute left-1.5 top-1.5 rounded-md bg-rose-600 px-1.5 py-0.5 text-[9px] font-semibold text-white sm:left-2 sm:top-2 sm:px-2 sm:py-1 sm:text-[10px]">
             {discountPercent.toFixed(0)}% OFF

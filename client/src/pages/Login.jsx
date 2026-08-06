@@ -9,11 +9,15 @@ import { resolveAuthRedirect } from '../utils/resolveAuthRedirect'
 const initialForm = { email: '', password: '' }
 
 const Login = ({ roleMode = 'customer' }) => {
-    const [form, setForm] = useState(initialForm)
+    const location = useLocation()
+    const registeredEmail = location.state?.registeredEmail || ''
+    const [form, setForm] = useState(() => ({
+        ...initialForm,
+        email: registeredEmail,
+    }))
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState('')
     const navigate = useNavigate()
-    const location = useLocation()
     const { mergeGuestCart } = useCart()
     const { setUser, isAdmin, isCustomer } = useAuth()
     const redirectTo = resolveAuthRedirect(location.state?.from, '/account')

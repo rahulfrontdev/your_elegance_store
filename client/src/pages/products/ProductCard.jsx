@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import OptimizedImage from '../../components/common/OptimizedImage'
 import { stringifyEntityId } from '../../utils/discountPreview'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 
@@ -31,12 +32,13 @@ const ProductCard = ({ product, returnPath = '/products' }) => {
       state={{ from: returnPath }}
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-lg"
     >
-      <div className="relative aspect-square overflow-hidden bg-neutral-100">
+      <div className="relative aspect-square w-full overflow-hidden bg-neutral-50">
         {imageSrc ? (
-          <img
+          <OptimizedImage
             src={imageSrc}
             alt={product?.name || 'Product'}
-            className="h-full w-full object-contain object-center transition duration-500 group-hover:scale-[1.02]"
+            preset="card"
+            className="absolute inset-0 h-full w-full object-contain object-center p-2"
             onError={(e) => {
               e.currentTarget.style.display = 'none'
               const fallback = e.currentTarget.nextElementSibling

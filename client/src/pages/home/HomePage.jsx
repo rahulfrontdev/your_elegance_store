@@ -7,7 +7,7 @@ import ReelsSection from '../../components/InstagramEmbadded/Insta'
 
 const HomePage = () => {
   return (
-    <section>
+    <section className="w-full max-w-full overflow-x-hidden">
       <Promotional />
       <CategoryCards />
       <NewArrivalProduct />

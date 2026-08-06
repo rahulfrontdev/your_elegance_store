@@ -21,16 +21,16 @@ const Register = () => {
     e.preventDefault()
     setError('')
 
-    if (!form.name.trim() || !form.mobile.trim() || !form.password) {
-      setError('Please fill in full name, mobile number and password.')
+    if (!form.name.trim() || !form.mobile.trim() || !form.email.trim() || !form.password) {
+      setError('Please fill in full name, mobile number, email and password.')
       return
     }
     if (!/^\d{10}$/.test(form.mobile.trim())) {
       setError('Please enter a valid 10-digit mobile number.')
       return
     }
-    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      setError('Please enter a valid email address or leave it empty.')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setError('Please enter a valid email address.')
       return
     }
     if (form.password.length < 6) {
@@ -47,16 +47,14 @@ const Register = () => {
       const payload = {
         name: form.name.trim(),
         mobile: form.mobile.trim(),
+        email: form.email.trim().toLowerCase(),
         password: form.password,
-      }
-      if (form.email.trim()) {
-        payload.email = form.email.trim().toLowerCase()
       }
 
       await axiosInstance.post('/auth/register', payload)
       navigate('/login', {
         replace: true,
-        state: { from: redirectTo, registeredMobile: form.mobile.trim() },
+        state: { from: redirectTo, registeredEmail: form.email.trim().toLowerCase() },
       })
     } catch (err) {
       const msg =
@@ -123,13 +121,14 @@ const Register = () => {
               </div>
               <div>
                 <label htmlFor="email" className="mb-1 block text-xs font-medium text-neutral-800">
-                  Email (optional)
+                  Email
                 </label>
                 <input
                   id="email"
                   name="email"
                   type="email"
                   autoComplete="email"
+                  required
                   value={form.email}
                   onChange={onChange}
                   className="w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/25"

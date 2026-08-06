@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { STORE_EMAIL, STORE_PHONE, STORE_PHONE_TEL } from '../../config/siteMeta'
 
 const ShippingPolicy = () => {
   return (
@@ -50,8 +51,8 @@ const ShippingPolicy = () => {
             <h2 className="text-lg font-semibold text-neutral-900">5. Lost or Damaged Packages</h2>
             <p className="mt-3 text-sm leading-relaxed sm:text-base">
               If your package is lost or damaged during transit, please contact us at{' '}
-              <a href="mailto:info@yes.com" className="font-medium text-neutral-900 underline">
-                info@yes.com
+              <a href={`mailto:${STORE_EMAIL}`} className="font-medium text-neutral-900 underline">
+                {STORE_EMAIL}
               </a>{' '}
               within 14 days of the order being placed. We will work with you to resolve the issue.
             </p>
@@ -72,8 +73,12 @@ const ShippingPolicy = () => {
             <h2 className="text-lg font-semibold text-neutral-900">7. Contact Us</h2>
             <p className="mt-3 text-sm leading-relaxed sm:text-base">
               If you have any questions about our shipping policy, please contact us at{' '}
-              <a href="tel:+919009488488" className="font-medium text-neutral-900 underline">
-                +91 9009488488
+              <a href={`tel:${STORE_PHONE_TEL}`} className="font-medium text-neutral-900 underline">
+                {STORE_PHONE}
+              </a>{' '}
+              or{' '}
+              <a href={`mailto:${STORE_EMAIL}`} className="font-medium text-neutral-900 underline">
+                {STORE_EMAIL}
               </a>
               .
             </p>

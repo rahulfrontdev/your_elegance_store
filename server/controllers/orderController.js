@@ -175,9 +175,9 @@ exports.createOrder = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error('items are required');
   }
-  if (!paymentMethod || !['COD', 'ONLINE'].includes(paymentMethod)) {
+  if (paymentMethod !== 'ONLINE') {
     res.status(400);
-    throw new Error('paymentMethod must be COD or ONLINE');
+    throw new Error('Only online payment is accepted');
   }
 
   const addressError = validateShippingAddress(shippingAddress);
@@ -207,21 +207,11 @@ exports.createOrder = asyncHandler(async (req, res) => {
       country: String(shippingAddress.country).trim(),
     },
     totalAmount,
-    paymentMethod,
+    paymentMethod: 'ONLINE',
     paymentStatus: 'Pending',
-    orderStatus: paymentMethod === 'COD' ? 'Confirmed' : 'Pending',
+    orderStatus: 'Pending',
     appliedDiscountSnapshot,
   });
-
-  if (paymentMethod === 'COD') {
-    await discountService.recordDiscountUsageForOrder(order._id);
-    const [orderPayload] = await attachImagesToOrders([order.toObject()]);
-    return res.status(201).json({
-      success: true,
-      message: 'Order placed successfully (COD)',
-      data: orderPayload,
-    });
-  }
 
   if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
     res.status(500);

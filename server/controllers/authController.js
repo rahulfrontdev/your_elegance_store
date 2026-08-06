@@ -7,13 +7,16 @@ const generateToken = (id) => {
   });
 };
 
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+
 // POST /api/auth/register
 const register = async (req, res) => {
   try {
     const { name, mobile, email, password } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!name || !mobile || !password) {
-      return res.status(400).json({ message: 'Name, mobile and password are required' });
+    if (!name || !mobile || !normalizedEmail || !password) {
+      return res.status(400).json({ message: 'Name, mobile, email and password are required' });
     }
 
     const mobileExists = await User.findOne({ mobile });
@@ -21,18 +24,16 @@ const register = async (req, res) => {
       return res.status(400).json({ message: 'Mobile already registered' });
     }
 
-    if (email) {
-      const userExists = await User.findOne({ email });
-      if (userExists) {
-        return res.status(400).json({ message: 'Email already registered' });
-      }
+    const emailExists = await User.findOne({ email: normalizedEmail });
+    if (emailExists) {
+      return res.status(400).json({ message: 'Email already registered' });
     }
 
     // Public registration is always customer — admin role cannot be self-assigned
     const user = await User.create({
       name,
       mobile,
-      email: email || undefined,
+      email: normalizedEmail,
       password,
       role: 'customer',
     });
@@ -42,25 +43,25 @@ const register = async (req, res) => {
       name: user.name,
       mobile: user.mobile,
       email: user.email,
-      role: user.role
+      role: user.role,
     });
-
   } catch (error) {
     console.error('Register error:', error.message);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// POST /api/auth/login
+// POST /api/auth/login — email only (no mobile login)
 const login = async (req, res) => {
   try {
-    const { email, mobile, password } = req.body;
+    const { email, password } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if ((!email && !mobile) || !password) {
-      return res.status(400).json({ message: 'Email or mobile and password are required' });
+    if (!normalizedEmail || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    const user = await User.findOne(email ? { email } : { mobile });
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user || !(await user.matchPassword(password))) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -90,4 +91,3 @@ module.exports = {
   login,
   getProfile,
 };
-

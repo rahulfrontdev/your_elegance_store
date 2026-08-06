@@ -91,7 +91,7 @@ const ModernCheckoutPage = () => {
         pincode: values.pincode,
         country: values.country,
       },
-      paymentMethod: 'COD',
+      paymentMethod: 'ONLINE',
     }
     const action = await dispatch(createGuestOrder(payload))
     if (!action.error) {
@@ -106,7 +106,7 @@ const ModernCheckoutPage = () => {
     const payload = {
       items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
       shippingAddress: selectedAddress,
-      paymentMethod: 'COD',
+      paymentMethod: 'ONLINE',
     }
     const action = await dispatch(createUserOrder(payload))
     if (!action.error) {

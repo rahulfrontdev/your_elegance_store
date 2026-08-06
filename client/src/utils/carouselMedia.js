@@ -4,6 +4,19 @@ export function resolveCarouselImageUrl(path) {
   return resolveMediaUrl(path)
 }
 
+/** Recommended hero upload specs (see home-hero CSS — aspect-ratio scaling). */
+export const HERO_BANNER_SPECS = {
+  /** Primary upload size (5:2) — fits desktop/tablet hero without cropping */
+  width: 2000,
+  height: 800,
+  aspectRatio: '5:2',
+  aspectRatioLabel: '5:2 (wide banner)',
+  formats: 'JPG or WebP',
+  maxFileSizeMb: 15,
+  safeZone:
+    'Keep important content in the center 70%. Upload at 2000×800 (5:2) for best fit on desktop and tablet; mobile uses a taller crop from the center.',
+}
+
 /**
  * Normalize one slide from various API shapes.
  * @param {Record<string, unknown>} raw

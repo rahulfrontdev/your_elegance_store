@@ -7,6 +7,7 @@ import { clearCurrentProduct, loadProductById } from '../../features/products/pr
 import { fetchWishlistStatus, toggleWishlistItem } from '../../api/wishlistApi'
 import { stringifyEntityId } from '../../utils/discountPreview'
 import { colourToHex, isLightColour } from '../../utils/colourSwatch'
+import OptimizedImage from '../../components/common/OptimizedImage'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 const isActiveDiscount = (value) => value === true || value === 'true' || value === 1 || value === '1'
@@ -19,10 +20,13 @@ function ProductGallery({ images, alt, activeImage, onSelectImage }) {
     <div>
       <div className="overflow-hidden rounded-xl bg-gradient-to-b from-neutral-50 to-white aspect-square max-h-[min(72vw,340px)] lg:max-h-[380px] flex items-center justify-center p-3">
         {current ? (
-          <img
+          <OptimizedImage
             key={current}
             src={current}
             alt={alt}
+            preset="detail"
+            loading="eager"
+            fetchPriority="high"
             className="max-h-full max-w-full object-contain drop-shadow-sm"
           />
         ) : (
@@ -39,7 +43,13 @@ function ProductGallery({ images, alt, activeImage, onSelectImage }) {
               className={`h-10 w-10 shrink-0 overflow-hidden rounded-lg border transition ${current === src ? 'border-neutral-900 ring-1 ring-neutral-900' : 'border-neutral-200 hover:border-neutral-400'
                 }`}
             >
-              <img src={src} alt={alt} className="h-full w-full object-contain object-center" />
+              <OptimizedImage
+                src={src}
+                alt={alt}
+                preset="thumb"
+                variant="thumb"
+                className="h-full w-full object-contain object-center"
+              />
             </button>
           ))}
         </div>

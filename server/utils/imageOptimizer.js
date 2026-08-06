@@ -1,10 +1,16 @@
 const { saveUploadedFile } = require('./localUpload');
+const { processUploadedImage } = require('./imageProcessor');
+
+function inferPreset(subdir) {
+  if (subdir === 'carousel') return 'carousel';
+  if (subdir === 'categories') return 'category';
+  return 'product';
+}
 
 /**
- * Save an uploaded image to the server disk (products folder).
- * Accepts a Multer file object or legacy file path string.
+ * Optimize upload: WebP variants (thumb/medium/large). Falls back to raw save if processing fails.
  */
-async function uploadOptimizedImage(fileOrPath, subdir = 'products') {
+async function uploadOptimizedImage(fileOrPath, subdir = 'products', preset) {
   const file =
     typeof fileOrPath === 'string'
       ? {
@@ -14,15 +20,22 @@ async function uploadOptimizedImage(fileOrPath, subdir = 'products') {
         }
       : fileOrPath;
 
+  const resolvedPreset = preset || inferPreset(subdir);
+  const processed = await processUploadedImage(file, subdir, resolvedPreset);
+
+  if (processed?.url && !processed.error) {
+    return processed.url;
+  }
+
   const saved = await saveUploadedFile(file, subdir);
   if (!saved) return '';
   if (saved.error) return saved;
   return saved.url;
 }
 
-async function uploadOptimizedImages(filePaths, subdir = 'products') {
+async function uploadOptimizedImages(filePaths, subdir = 'products', preset) {
   if (!filePaths?.length) return [];
-  return Promise.all(filePaths.map((entry) => uploadOptimizedImage(entry, subdir)));
+  return Promise.all(filePaths.map((entry) => uploadOptimizedImage(entry, subdir, preset)));
 }
 
 function inferMimeFromPath(filePath) {

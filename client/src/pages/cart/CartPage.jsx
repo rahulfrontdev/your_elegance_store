@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Minus, Plus, Trash2 } from 'lucide-react'
+import OptimizedImage from '../../components/common/OptimizedImage'
 import { useCart } from '../../context/CartContext.jsx'
 import { buildLineMapByProductId, lineUnitFinalAfterDiscount, lineUnitOriginal, stringifyEntityId } from '../../utils/discountPreview'
 
@@ -128,7 +129,7 @@ const CartPage = () => {
                 >
                   <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                     <div className="h-14 w-14 sm:h-16 sm:w-16 overflow-hidden rounded-lg bg-neutral-100 shrink-0">
-                      <img src={i.image} alt="" className="h-full w-full object-cover" />
+                      <OptimizedImage src={i.image} alt="" preset="thumb" variant="thumb" className="h-full w-full object-cover" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-neutral-900 truncate">{i.name}</p>

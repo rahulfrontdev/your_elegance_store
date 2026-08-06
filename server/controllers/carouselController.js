@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const CarouselSlide = require('../models/CarouselSlide');
-const { saveUploadedFile } = require('../utils/localUpload');
+const { uploadOptimizedImage } = require('../utils/imageOptimizer');
 const { normalizeCarouselSlide } = require('../utils/mediaUrl');
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
@@ -12,11 +12,14 @@ const uploadSingleImage = async (file) => {
   if (!allowedImageMimeTypes.includes(file.mimetype)) {
     return { error: 'Image must be jpeg, jpg, png, or webp' };
   }
-  const saved = await saveUploadedFile(file, 'carousel');
-  if (saved?.error) {
-    return { error: saved.error };
+  const url = await uploadOptimizedImage(file, 'carousel', 'carousel');
+  if (typeof url === 'object' && url?.error) {
+    return { error: url.error };
   }
-  return { url: saved.url };
+  if (!url || typeof url !== 'string') {
+    return { error: 'Failed to save carousel image' };
+  }
+  return { url };
 };
 
 // GET /api/carousel — public: active slides only, ordered

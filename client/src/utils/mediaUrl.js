@@ -22,6 +22,20 @@ export function resolveMediaUrl(url) {
   }
 
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    const pathIdx = trimmed.indexOf('/uploads/')
+    if (pathIdx >= 0) {
+      const origin = getMediaOrigin() || PRODUCTION_SERVER_ORIGIN
+      return `${origin}${trimmed.slice(pathIdx)}`
+    }
+    if (/98\.81\.77\.254|localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(trimmed)) {
+      try {
+        const parsed = new URL(trimmed)
+        const origin = getMediaOrigin() || PRODUCTION_SERVER_ORIGIN
+        return `${origin}${parsed.pathname}${parsed.search}`
+      } catch {
+        return trimmed
+      }
+    }
     return trimmed
   }
 

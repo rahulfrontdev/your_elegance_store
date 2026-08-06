@@ -6,7 +6,10 @@ const OrderSuccessPage = () => {
 
   const orderId = state?.orderId
   const totalAmount = Number(state?.totalAmount || 0)
-  const paymentMethod = state?.paymentMethod === 'online' ? 'Online Payment' : 'Cash on Delivery'
+  const paymentMethodLabel =
+    String(state?.paymentMethod || '').toLowerCase() === 'cod'
+      ? 'Cash on Delivery'
+      : 'Online Payment'
   const snapshot = state?.appliedDiscountSnapshot
 
   if (!orderId) {
@@ -40,7 +43,7 @@ const OrderSuccessPage = () => {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-neutral-600">Payment</span>
-            <span className="font-semibold text-neutral-900">{paymentMethod}</span>
+            <span className="font-semibold text-neutral-900">{paymentMethodLabel}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-neutral-600">Total</span>

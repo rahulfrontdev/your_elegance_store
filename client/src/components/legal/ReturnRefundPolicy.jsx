@@ -1,3 +1,5 @@
+import { STORE_EMAIL, STORE_PHONE, STORE_PHONE_TEL } from '../../config/siteMeta'
+
 const ReturnRefundPolicy = () => {
   return (
     <section className="bg-gradient-to-b from-neutral-50 to-white px-4 py-12 sm:px-6 sm:py-16">
@@ -34,12 +36,12 @@ const ReturnRefundPolicy = () => {
             <h2 className="text-lg font-semibold text-neutral-900">Contact us</h2>
             <p className="mt-3 text-sm leading-relaxed sm:text-base">
               You can always contact us for any return question at{' '}
-              <a href="tel:+919009488488" className="font-medium text-neutral-900 underline">
-                +91 9009488488
+              <a href={`tel:${STORE_PHONE_TEL}`} className="font-medium text-neutral-900 underline">
+                {STORE_PHONE}
               </a>{' '}
               or{' '}
-              <a href="mailto:info@yes.com" className="font-medium text-neutral-900 underline">
-                info@yes.com
+              <a href={`mailto:${STORE_EMAIL}`} className="font-medium text-neutral-900 underline">
+                {STORE_EMAIL}
               </a>
               .
             </p>

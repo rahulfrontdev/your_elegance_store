@@ -57,7 +57,7 @@ const NewArrivalProduct = () => {
 
         <div
           ref={scrollRef}
-          className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory sm:gap-4 lg:gap-5"
+          className="flex items-stretch gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory sm:gap-4 lg:gap-5"
         >
           {loading ? (
             <p className="w-full text-center text-sm text-neutral-500">Loading latest products...</p>
@@ -65,8 +65,12 @@ const NewArrivalProduct = () => {
             <p className="w-full text-center text-sm text-neutral-500">No new arrivals found.</p>
           ) : (
             products.map((item) => (
-              <div key={item?._id || item?.id} data-arrival-card className={ARRIVAL_CARD_CLASS}>
-                <HomeSectionProductCard product={item} className="h-full" />
+              <div
+                key={item?._id || item?.id}
+                data-arrival-card
+                className={`${ARRIVAL_CARD_CLASS} flex shrink-0 flex-col`}
+              >
+                <HomeSectionProductCard product={item} className="h-full w-full min-w-0" />
               </div>
             ))
           )}

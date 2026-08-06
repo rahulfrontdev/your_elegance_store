@@ -1,3 +1,5 @@
+import { STORE_EMAIL } from '../../config/siteMeta'
+
 const sectionClass =
   'scroll-mt-24 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8'
 
@@ -136,10 +138,10 @@ const PrivacyPolicy = () => {
                 marketing purposes, you may change your mind at any time by writing to or emailing
                 us at{' '}
                 <a
-                  href="mailto:yes.yourelegancestore@gmail.com"
+                  href={`mailto:${STORE_EMAIL}`}
                   className="font-medium text-neutral-900 underline"
                 >
-                  yes.yourelegancestore@gmail.com
+                  {STORE_EMAIL}
                 </a>
                 .
               </li>

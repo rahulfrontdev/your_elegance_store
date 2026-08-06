@@ -7,6 +7,10 @@ export const SITE_DESCRIPTION =
 export const SITE_TITLE = `${SITE_NAME} | ${SITE_TAGLINE}`
 export const SITE_URL = PRODUCTION_SERVER_ORIGIN
 export const SITE_OG_IMAGE = '/Themed_Logo.png'
+export const STORE_EMAIL = 'info@yourelegancestore.com'
+export const STORE_PHONE = '+91 9009488488'
+export const STORE_PHONE_TEL = '+919009488488'
+export const STORE_LOCATION = 'Hyderabad, India'
 
 const ROUTE_TITLES = {
   '/': SITE_TITLE,

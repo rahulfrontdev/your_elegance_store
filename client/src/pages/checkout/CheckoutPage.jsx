@@ -120,7 +120,6 @@ const CheckoutPage = () => {
   } = useAddresses()
   const [form, setForm] = useState(() => emptyForm())
   const [currentStep, setCurrentStep] = useState(1)
-  const [paymentMethod, setPaymentMethod] = useState('cod')
   const [isGuestCheckout, setIsGuestCheckout] = useState(true)
   const [selectedAddressId, setSelectedAddressId] = useState('')
   const [isAddingAddress, setIsAddingAddress] = useState(false)
@@ -225,10 +224,6 @@ const CheckoutPage = () => {
     if (isPlacingOrder) return
     if (!validateCustomerAndAddress()) return
 
-    if (!['cod', 'online'].includes(paymentMethod)) {
-      setStatus({ type: 'error', message: 'Please select a payment method.' })
-      return
-    }
     const shippingAddress = {
       fullName: form.fullName.trim(),
       mobile: form.mobile.trim(),
@@ -329,29 +324,13 @@ const CheckoutPage = () => {
     setStatus(null)
     setIsPlacingOrder(true)
     const res = await placeOrder({
-      paymentMethod,
+      paymentMethod: 'online',
       shippingAddress,
     })
 
     if (!res?.ok) {
       setIsPlacingOrder(false)
       setStatus({ type: 'error', message: res?.message || 'Could not place order.' })
-      return
-    }
-
-    if (paymentMethod === 'cod') {
-      setIsPlacingOrder(false)
-      navigate('/checkout/success', {
-        state: {
-          orderId: res.order.orderId || res.order.id,
-          orderDbId: res.order.id,
-          totalAmount: res.order.total,
-          paymentMethod: res.order.paymentMethod,
-          appliedDiscountSnapshot: res.order.appliedDiscountSnapshot,
-          formattedAddress: res.order.formattedAddress,
-        },
-        replace: true,
-      })
       return
     }
 
@@ -751,38 +730,12 @@ const CheckoutPage = () => {
               </div>
 
               <h2 className="text-sm font-semibold text-neutral-900 pt-2">Payment method</h2>
-              <div className="grid gap-2">
-                <label className="flex items-center gap-2 rounded-lg border border-neutral-200 p-3 text-sm">
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    checked={paymentMethod === 'cod'}
-                    onChange={() => {
-                      setPaymentMethod('cod')
-                      setStatus(null)
-                    }}
-                  />
-                  <span className="text-neutral-700">Cash on Delivery</span>
-                </label>
-                <label className="flex items-center gap-2 rounded-lg border border-neutral-200 p-3 text-sm">
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    checked={paymentMethod === 'online'}
-                    onChange={() => {
-                      setPaymentMethod('online')
-                      setStatus(null)
-                    }}
-                  />
-                  <span className="text-neutral-700">Online Payment</span>
-                </label>
-              </div>
-
-              {paymentMethod === 'online' && (
-                <p className="text-xs text-neutral-600">
+              <div className="rounded-lg border border-neutral-200 bg-white p-3 text-sm">
+                <p className="font-medium text-neutral-900">Online Payment</p>
+                <p className="mt-1 text-xs text-neutral-600">
                   After you place the order, Razorpay opens where you can pay with card, UPI, netbanking, or wallets.
                 </p>
-              )}
+              </div>
             </>
           )}
 

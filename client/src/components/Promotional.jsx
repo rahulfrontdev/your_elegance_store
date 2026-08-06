@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Carousel } from 'react-responsive-carousel'
 import 'react-responsive-carousel/lib/styles/carousel.min.css'
+import OptimizedImage from './common/OptimizedImage'
 import { fetchPublicCarouselSlides } from '../api/carouselApi'
 import { normalizeCarouselSlideList } from '../utils/carouselMedia'
 
@@ -30,6 +31,26 @@ const Promotional = () => {
   const navigate = useNavigate()
   const [banners, setBanners] = useState(defaultBanners)
   const [loading, setLoading] = useState(true)
+
+  useLayoutEffect(() => {
+    if (loading) return undefined
+    const id = window.requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'))
+    })
+    return () => window.cancelAnimationFrame(id)
+  }, [loading, banners.length])
+
+  useEffect(() => {
+    const refreshCarouselLayout = () => {
+      window.dispatchEvent(new Event('resize'))
+    }
+    window.addEventListener('orientationchange', refreshCarouselLayout)
+    window.visualViewport?.addEventListener('resize', refreshCarouselLayout)
+    return () => {
+      window.removeEventListener('orientationchange', refreshCarouselLayout)
+      window.visualViewport?.removeEventListener('resize', refreshCarouselLayout)
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -83,15 +104,18 @@ const Promotional = () => {
         emulateTouch
         showIndicators
         stopOnHover
+        dynamicHeight={false}
+        width="100%"
       >
         {banners.map((item) => (
           <div key={String(item.id)} className="home-hero__slide">
-            <img
+            <OptimizedImage
               src={item.image}
               alt={item.alt}
-              className="home-hero__image"
+              preset="hero"
               loading="eager"
-              decoding="async"
+              fetchPriority="high"
+              className="home-hero__image"
               onClick={() => handleBannerClick(item.linkUrl)}
               onKeyDown={(e) => {
                 if (item.linkUrl && (e.key === 'Enter' || e.key === ' ')) {

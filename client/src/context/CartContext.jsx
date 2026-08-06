@@ -538,13 +538,13 @@ export function CartProvider({ children }) {
     }
   }
 
-  const placeOrder = async ({ shippingAddress, paymentMethod = 'cod', discountCode: discountOverride }) => {
+  const placeOrder = async ({ shippingAddress, paymentMethod = 'online', discountCode: discountOverride }) => {
     if (!shippingAddress || typeof shippingAddress !== 'object') {
       return { ok: false, message: 'Please enter shipping address.' }
     }
     if (items.length === 0) return { ok: false, message: 'Cart is empty.' }
-    if (!['cod', 'online'].includes(paymentMethod)) {
-      return { ok: false, message: 'Please choose a valid payment method.' }
+    if (paymentMethod !== 'online') {
+      return { ok: false, message: 'Only online payment is accepted.' }
     }
 
     const code =
@@ -572,7 +572,7 @@ export function CartProvider({ children }) {
         pincode: shippingAddress.pincode,
         country: shippingAddress.country,
       },
-      paymentMethod: paymentMethod === 'online' ? 'ONLINE' : 'COD',
+      paymentMethod: 'ONLINE',
       discountCode: code,
     }
 
@@ -584,10 +584,6 @@ export function CartProvider({ children }) {
       const key = root?.key || data?.key || razorpayOrder?.key || ''
 
       setOrders((prev) => [order, ...prev.filter((entry) => String(entry.id) !== String(order.id))])
-
-      if (paymentMethod === 'cod') {
-        await clearCart()
-      }
 
       return { ok: true, order, razorpayOrder, key }
     } catch (error) {
