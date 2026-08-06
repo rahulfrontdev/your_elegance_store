@@ -466,9 +466,22 @@ exports.updateOrderStatusByAdmin = asyncHandler(async (req, res) => {
     throw new Error('Order not found');
   }
 
+  const dispatchStatuses = ['Shipped', 'Delivered'];
+  const confirmManualPayment = req.body?.confirmManualPayment === true;
+
+  if (dispatchStatuses.includes(nextStatus) && order.paymentStatus === 'Pending') {
+    if (!confirmManualPayment) {
+      res.status(409);
+      throw new Error(
+        'Payment has not been received. Confirm manual payment collection before shipping or delivering this order.'
+      );
+    }
+    order.paymentStatus = 'Paid';
+  }
+
   order.orderStatus = nextStatus;
 
-  if (nextStatus === 'Delivered') {
+  if (nextStatus === 'Delivered' && order.paymentStatus !== 'Paid') {
     order.paymentStatus = 'Paid';
   }
 

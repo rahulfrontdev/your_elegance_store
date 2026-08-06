@@ -137,6 +137,17 @@ function normalizeOrderStatusValue(status) {
   return 'pending'
 }
 
+const DISPATCH_STATUSES_REQUIRING_PAYMENT = new Set(['shipped', 'delivered'])
+
+function isPaymentPendingStatus(status) {
+  return String(status || '').trim().toLowerCase() === 'pending'
+}
+
+function requiresManualPaymentConfirmation(row, nextStatus) {
+  const nextKey = normalizeOrderStatusValue(nextStatus)
+  return isPaymentPendingStatus(row?.paymentStatus) && DISPATCH_STATUSES_REQUIRING_PAYMENT.has(nextKey)
+}
+
 function pickApiError(error, fallback) {
   return error?.response?.data?.message || error?.response?.data?.error || error?.message || fallback
 }
@@ -248,6 +259,7 @@ const AdminDashboard = () => {
   const [detailRow, setDetailRow] = useState(null)
   const [statusUpdatingId, setStatusUpdatingId] = useState('')
   const [statusFeedback, setStatusFeedback] = useState(null)
+  const [paymentConfirm, setPaymentConfirm] = useState(null)
 
   const [salesLoading, setSalesLoading] = useState(false)
   const [salesError, setSalesError] = useState('')
@@ -293,10 +305,18 @@ const AdminDashboard = () => {
     loadOrders()
   }, [activeTab, loadOrders])
 
-  const handleOrderStatusChange = async (row, nextStatus) => {
+  const handleOrderStatusChange = async (row, nextStatus, options = {}) => {
     if (!row?.id || !nextStatus || statusUpdatingId) return
 
+    if (!options.skipPaymentCheck && requiresManualPaymentConfirmation(row, nextStatus)) {
+      setPaymentConfirm({ row, nextStatus })
+      return
+    }
+
     const payload = { orderStatus: nextStatus }
+    if (options.paymentCollectedManually) {
+      payload.confirmManualPayment = true
+    }
     if (normalizeOrderStatusValue(nextStatus) === 'canceled') {
       const reason = window.prompt('Reason for cancelling this order?', 'Cancelled by admin')
       if (reason == null) return
@@ -314,6 +334,21 @@ const AdminDashboard = () => {
     } finally {
       setStatusUpdatingId('')
     }
+  }
+
+  const closePaymentConfirm = () => {
+    if (statusUpdatingId) return
+    setPaymentConfirm(null)
+  }
+
+  const confirmManualPaymentDispatch = async () => {
+    if (!paymentConfirm || statusUpdatingId) return
+    const { row, nextStatus } = paymentConfirm
+    setPaymentConfirm(null)
+    await handleOrderStatusChange(row, nextStatus, {
+      skipPaymentCheck: true,
+      paymentCollectedManually: true,
+    })
   }
 
   const loadMonthlySales = useCallback(async () => {
@@ -688,6 +723,51 @@ const AdminDashboard = () => {
         </div>
       </div>
         </>
+      )}
+
+      {activeTab === 'orders' && paymentConfirm && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4 py-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="payment-confirm-title"
+          onClick={closePaymentConfirm}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-amber-200 bg-white p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="payment-confirm-title" className="text-lg font-semibold text-neutral-950">
+              Payment not received
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-neutral-700">
+              Payment has not been received. Are you sure payment has been collected manually?
+            </p>
+            <p className="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Order <span className="font-semibold">{paymentConfirm.row.orderId || paymentConfirm.row.id}</span> will
+              be marked as{' '}
+              <span className="font-semibold capitalize">{normalizeOrderStatusValue(paymentConfirm.nextStatus)}</span>.
+            </p>
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closePaymentConfirm}
+                disabled={Boolean(statusUpdatingId)}
+                className="rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmManualPaymentDispatch}
+                disabled={Boolean(statusUpdatingId)}
+                className="rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {statusUpdatingId ? 'Updating…' : 'Confirm (Payment Collected Manually)'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {activeTab === 'orders' && detailRow && (

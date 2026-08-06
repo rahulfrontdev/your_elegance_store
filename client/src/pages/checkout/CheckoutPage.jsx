@@ -108,7 +108,7 @@ const loadRazorpayScript = () =>
 const CheckoutPage = () => {
   const navigate = useNavigate()
   const { items, total, placeOrder, verifyOrderPayment, discountPreview, discountPreviewError, discountPreviewLoading, discountCode } = useCart()
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const {
     actionLoading: addressActionLoading,
     addresses,
@@ -134,7 +134,7 @@ const CheckoutPage = () => {
     if (!Array.isArray(lines)) return new Map()
     return buildLineMapByProductId(lines)
   }, [discountPreview])
-  const isLoggedIn = Boolean(localStorage.getItem('token') && user)
+  const isLoggedIn = Boolean(isAuthenticated && user)
 
   useEffect(() => {
     if (!isLoggedIn || !user) return undefined
@@ -781,13 +781,11 @@ const CheckoutPage = () => {
         </section>
 
         <aside className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm lg:sticky lg:top-4">
-          {currentStep === 1 && (
+          {currentStep === 1 && !isLoggedIn && (
             <div className="mb-4 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
               <h2 className="text-sm font-semibold text-neutral-900">Login or Register</h2>
               <p className="mt-1 text-xs text-neutral-600">
-                {isLoggedIn
-                  ? 'You are already logged in. You can continue checkout or switch account.'
-                  : 'Already have an account? Login for saved addresses and faster checkout.'}
+                Already have an account? Login for saved addresses and faster checkout.
               </p>
               <div className="mt-3 flex gap-2">
                 <Link
@@ -805,6 +803,17 @@ const CheckoutPage = () => {
                   Register
                 </Link>
               </div>
+            </div>
+          )}
+
+          {currentStep === 1 && isLoggedIn && (
+            <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+              <h2 className="text-sm font-semibold text-neutral-900">Signed in</h2>
+              <p className="mt-1 text-sm font-medium text-neutral-900">{user?.name || 'Customer'}</p>
+              {user?.email ? <p className="mt-0.5 text-xs text-neutral-600">{user.email}</p> : null}
+              <p className="mt-2 text-xs text-emerald-800">
+                Use your saved addresses on the left to continue checkout.
+              </p>
             </div>
           )}
 
