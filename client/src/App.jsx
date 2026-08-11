@@ -6,15 +6,30 @@ import SplashScreen from './components/SplashScreen'
 import './App.css'
 
 /** How long the splash stays fully visible (matches one logo spin) */
-const SPLASH_VISIBLE_MS = 2100
+const SPLASH_VISIBLE_MS = 850
 /** Fade-out — store fades in at the same time */
-const SPLASH_FADE_MS = 350
+const SPLASH_FADE_MS = 280
+const SPLASH_SESSION_KEY = 'yes_store_splash_seen'
 
 const App = () => {
-  const [showSplash, setShowSplash] = useState(true)
+  const [showSplash, setShowSplash] = useState(() => {
+    try {
+      return !sessionStorage.getItem(SPLASH_SESSION_KEY)
+    } catch {
+      return true
+    }
+  })
   const [splashExiting, setSplashExiting] = useState(false)
 
   useEffect(() => {
+    if (!showSplash) return undefined
+
+    try {
+      sessionStorage.setItem(SPLASH_SESSION_KEY, '1')
+    } catch {
+      /* ignore */
+    }
+
     const fadeId = window.setTimeout(() => setSplashExiting(true), SPLASH_VISIBLE_MS)
     const doneId = window.setTimeout(
       () => setShowSplash(false),
@@ -24,7 +39,7 @@ const App = () => {
       window.clearTimeout(fadeId)
       window.clearTimeout(doneId)
     }
-  }, [])
+  }, [showSplash])
 
   /* Lock page while splash shows — stops mobile scroll / bar resize shifting the logo */
   useEffect(() => {
@@ -43,7 +58,7 @@ const App = () => {
 
   return (
     <>
-      <div className={`app-shell${showSplash && !splashExiting ? '' : ' app-shell--ready'}`}>
+      <div className="app-shell app-shell--ready">
         <BrowserRouter>
           <PageMeta />
           <AppRoutes />

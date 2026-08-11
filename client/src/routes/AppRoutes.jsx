@@ -1,31 +1,39 @@
 import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import MainLayout from '../components/layout/MainLayout'
-import AccountPage from '../pages/account/AccountPage'
-import CategoryPage from '../pages/category/CategoryPage'
 import HomePage from '../pages/home/HomePage'
-import AboutPage from '../pages/about/AboutPage'
-import TermsPage from '../pages/legal/TermsPage'
-import ReturnPolicyPage from '../pages/legal/ReturnPolicyPage'
-import ShippingPolicyPage from '../pages/legal/ShippingPolicyPage'
-import PrivacyPolicyPage from '../pages/legal/PrivacyPolicyPage'
-import ProductDetailPage from '../pages/product-detail/ProductDetailPage'
-import ProductsPage from '../pages/products/ProductsPage'
-import CartPage from '../pages/cart/CartPage'
-import CheckoutPage from '../pages/checkout/CheckoutPage'
-import OrderSuccessPage from '../pages/checkout/OrderSuccessPage'
-import WishlistPage from '../pages/wishlist/WishlistPage'
-import AccountOrdersPage from '../pages/account/AccountOrdersPage'
-import AccountOrderDetailsPage from '../pages/account/AccountOrderDetailsPage'
-import AccountWishlistPage from '../pages/account/AccountWishlistPage'
-import AccountProfilePage from '../pages/account/AccountProfilePage'
-import AccountMyAddressPage from '../pages/account/AccountMyAddressPage'
-import Register from '../pages/Register'
-import Login from '../pages/Login'
 import RequireAdmin from '../components/admin/RequireAdmin'
 import RequireAuth from '../components/auth/RequireAuth'
 import RequireCustomer from '../components/auth/RequireCustomer'
 import AdminLayout from '../layouts/AdminLayout'
+import PageLoader from '../components/common/PageLoader'
+
+const Register = lazy(() => import('../pages/Register'))
+const Login = lazy(() => import('../pages/Login'))
+const ForgotPasswordPage = lazy(() => import('../pages/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('../pages/ResetPasswordPage'))
+const AboutPage = lazy(() => import('../pages/about/AboutPage'))
+const TermsPage = lazy(() => import('../pages/legal/TermsPage'))
+const ReturnPolicyPage = lazy(() => import('../pages/legal/ReturnPolicyPage'))
+const ShippingPolicyPage = lazy(() => import('../pages/legal/ShippingPolicyPage'))
+const PrivacyPolicyPage = lazy(() => import('../pages/legal/PrivacyPolicyPage'))
+const ProductDetailPage = lazy(() => import('../pages/product-detail/ProductDetailPage'))
+const ProductsPage = lazy(() => import('../pages/products/ProductsPage'))
+const CategoryPage = lazy(() => import('../pages/category/CategoryPage'))
+const CartPage = lazy(() => import('../pages/cart/CartPage'))
+const CheckoutPage = lazy(() => import('../pages/checkout/CheckoutPage'))
+const OrderSuccessPage = lazy(() => import('../pages/checkout/OrderSuccessPage'))
+const WishlistPage = lazy(() => import('../pages/wishlist/WishlistPage'))
+const AccountPage = lazy(() => import('../pages/account/AccountPage'))
+const AccountOrdersPage = lazy(() => import('../pages/account/AccountOrdersPage'))
+const AccountOrderDetailsPage = lazy(() => import('../pages/account/AccountOrderDetailsPage'))
+const AccountWishlistPage = lazy(() => import('../pages/account/AccountWishlistPage'))
+const AccountProfilePage = lazy(() => import('../pages/account/AccountProfilePage'))
+const AccountMyAddressPage = lazy(() => import('../pages/account/AccountMyAddressPage'))
+const ModernCartPage = lazy(() => import('../pages/modern/ModernCartPage'))
+const ModernCheckoutPage = lazy(() => import('../pages/modern/ModernCheckoutPage'))
+const ModernAuthPage = lazy(() => import('../pages/modern/ModernAuthPage'))
+const ModernOrderSuccessPage = lazy(() => import('../pages/modern/ModernOrderSuccessPage'))
 
 const AdminDashboard = lazy(() => import('../pages/admin/AdminDashboard'))
 const AdminCategories = lazy(() => import('../pages/admin/AdminCategories'))
@@ -33,29 +41,36 @@ const AdminProducts = lazy(() => import('../pages/admin/AdminProducts'))
 const AdminUsers = lazy(() => import('../pages/admin/AdminUsers'))
 const AdminCarousel = lazy(() => import('../pages/admin/AdminCarousel'))
 const AdminDiscounts = lazy(() => import('../pages/admin/AdminDiscounts'))
+const AdminSpecialDiscounts = lazy(() => import('../pages/admin/AdminSpecialDiscounts'))
 const AdminCatalogs = lazy(() => import('../pages/admin/AdminCatalogs'))
 const AdminReels = lazy(() => import('../pages/admin/AdminReels'))
 const AdminReports = lazy(() => import('../pages/admin/AdminReports'))
 const AdminReviews = lazy(() => import('../pages/admin/AdminReviews'))
 
-const AdminRouteFallback = () => (
-  <div className="flex min-h-[40vh] items-center justify-center text-sm text-neutral-600">Loading admin…</div>
+const AdminRouteFallback = () => <PageLoader label="Loading admin…" />
+
+const withSuspense = (element, label = 'Loading…') => (
+  <Suspense fallback={<PageLoader label={label} />}>{element}</Suspense>
 )
-import ModernCartPage from '../pages/modern/ModernCartPage'
-import ModernCheckoutPage from '../pages/modern/ModernCheckoutPage'
-import ModernAuthPage from '../pages/modern/ModernAuthPage'
-import ModernOrderSuccessPage from '../pages/modern/ModernOrderSuccessPage'
 
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/register" element={<Register />} />
-      <Route path="/login" element={<Login roleMode="customer" />} />
-      <Route path="/admin/login" element={<Login roleMode="admin" />} />
-      <Route path="/modern/cart" element={<ModernCartPage />} />
-      <Route path="/modern/checkout" element={<ModernCheckoutPage />} />
-      <Route path="/modern/login" element={<ModernAuthPage />} />
-      <Route path="/modern/order-success" element={<ModernOrderSuccessPage />} />
+      <Route path="/register" element={withSuspense(<Register />, 'Loading…')} />
+      <Route
+        path="/login"
+        element={withSuspense(<Login roleMode="customer" />, 'Loading…')}
+      />
+      <Route path="/forgot-password" element={withSuspense(<ForgotPasswordPage />)} />
+      <Route path="/reset-password" element={withSuspense(<ResetPasswordPage />)} />
+      <Route
+        path="/admin/login"
+        element={withSuspense(<Login roleMode="admin" />, 'Loading…')}
+      />
+      <Route path="/modern/cart" element={withSuspense(<ModernCartPage />)} />
+      <Route path="/modern/checkout" element={withSuspense(<ModernCheckoutPage />)} />
+      <Route path="/modern/login" element={withSuspense(<ModernAuthPage />)} />
+      <Route path="/modern/order-success" element={withSuspense(<ModernOrderSuccessPage />)} />
       <Route
         path="/admin"
         element={
@@ -64,86 +79,20 @@ const AppRoutes = () => {
           </RequireAdmin>
         }
       >
+        <Route index element={withSuspense(<AdminDashboard />, 'Loading admin…')} />
+        <Route path="categories" element={withSuspense(<AdminCategories />, 'Loading admin…')} />
+        <Route path="products" element={withSuspense(<AdminProducts />, 'Loading admin…')} />
+        <Route path="users" element={withSuspense(<AdminUsers />, 'Loading admin…')} />
+        <Route path="reviews" element={withSuspense(<AdminReviews />, 'Loading admin…')} />
+        <Route path="carousel" element={withSuspense(<AdminCarousel />, 'Loading admin…')} />
+        <Route path="reels" element={withSuspense(<AdminReels />, 'Loading admin…')} />
+        <Route path="discounts" element={withSuspense(<AdminDiscounts />, 'Loading admin…')} />
         <Route
-          index
-          element={
-            <Suspense fallback={<AdminRouteFallback />}>
-              <AdminDashboard />
-            </Suspense>
-          }
+          path="special-discounts"
+          element={withSuspense(<AdminSpecialDiscounts />, 'Loading admin…')}
         />
-        <Route
-          path="categories"
-          element={
-            <Suspense fallback={<AdminRouteFallback />}>
-              <AdminCategories />
-            </Suspense>
-          }
-        />
-        <Route
-          path="products"
-          element={
-            <Suspense fallback={<AdminRouteFallback />}>
-              <AdminProducts />
-            </Suspense>
-          }
-        />
-        <Route
-          path="users"
-          element={
-            <Suspense fallback={<AdminRouteFallback />}>
-              <AdminUsers />
-            </Suspense>
-          }
-        />
-        <Route
-          path="reviews"
-          element={
-            <Suspense fallback={<AdminRouteFallback />}>
-              <AdminReviews />
-            </Suspense>
-          }
-        />
-        <Route
-          path="carousel"
-          element={
-            <Suspense fallback={<AdminRouteFallback />}>
-              <AdminCarousel />
-            </Suspense>
-          }
-        />
-        <Route
-          path="reels"
-          element={
-            <Suspense fallback={<AdminRouteFallback />}>
-              <AdminReels />
-            </Suspense>
-          }
-        />
-        <Route
-          path="discounts"
-          element={
-            <Suspense fallback={<AdminRouteFallback />}>
-              <AdminDiscounts />
-            </Suspense>
-          }
-        />
-        <Route
-          path="catalogs"
-          element={
-            <Suspense fallback={<AdminRouteFallback />}>
-              <AdminCatalogs />
-            </Suspense>
-          }
-        />
-        <Route
-          path="reports"
-          element={
-            <Suspense fallback={<AdminRouteFallback />}>
-              <AdminReports />
-            </Suspense>
-          }
-        />
+        <Route path="catalogs" element={withSuspense(<AdminCatalogs />, 'Loading admin…')} />
+        <Route path="reports" element={withSuspense(<AdminReports />, 'Loading admin…')} />
       </Route>
       <Route
         element={
@@ -153,27 +102,27 @@ const AppRoutes = () => {
         }
       >
         <Route index element={<HomePage />} />
-        <Route path="about" element={<AboutPage />} />
-        <Route path="terms" element={<TermsPage />} />
-        <Route path="return-policy" element={<ReturnPolicyPage />} />
-        <Route path="shipping-policy" element={<ShippingPolicyPage />} />
-        <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
-        <Route path="products" element={<ProductsPage />} />
-        <Route path="products/:productId" element={<ProductDetailPage />} />
-        <Route path="category/:categoryId" element={<CategoryPage />} />
-        <Route path="cart" element={<CartPage />} />
-        <Route path="checkout" element={<CheckoutPage />} />
-        <Route path="checkout/success" element={<OrderSuccessPage />} />
+        <Route path="about" element={withSuspense(<AboutPage />)} />
+        <Route path="terms" element={withSuspense(<TermsPage />)} />
+        <Route path="return-policy" element={withSuspense(<ReturnPolicyPage />)} />
+        <Route path="shipping-policy" element={withSuspense(<ShippingPolicyPage />)} />
+        <Route path="privacy-policy" element={withSuspense(<PrivacyPolicyPage />)} />
+        <Route path="products" element={withSuspense(<ProductsPage />, 'Loading products…')} />
+        <Route path="products/:productId" element={withSuspense(<ProductDetailPage />)} />
+        <Route path="category/:categoryId" element={withSuspense(<CategoryPage />)} />
+        <Route path="cart" element={withSuspense(<CartPage />)} />
+        <Route path="checkout" element={withSuspense(<CheckoutPage />)} />
+        <Route path="checkout/success" element={withSuspense(<OrderSuccessPage />)} />
         <Route element={<RequireAuth />}>
-          <Route path="account" element={<AccountPage />}>
-            <Route index element={<AccountOrdersPage />} />
-            <Route path="orders" element={<AccountOrdersPage />} />
-            <Route path="orders/:orderId" element={<AccountOrderDetailsPage />} />
-            <Route path="wishlist" element={<AccountWishlistPage />} />
-            <Route path="profile" element={<AccountProfilePage />} />
-            <Route path="my-address" element={<AccountMyAddressPage />} />
+          <Route path="account" element={withSuspense(<AccountPage />)}>
+            <Route index element={withSuspense(<AccountOrdersPage />)} />
+            <Route path="orders" element={withSuspense(<AccountOrdersPage />)} />
+            <Route path="orders/:orderId" element={withSuspense(<AccountOrderDetailsPage />)} />
+            <Route path="wishlist" element={withSuspense(<AccountWishlistPage />)} />
+            <Route path="profile" element={withSuspense(<AccountProfilePage />)} />
+            <Route path="my-address" element={withSuspense(<AccountMyAddressPage />)} />
           </Route>
-          <Route path="wishlist" element={<WishlistPage />} />
+          <Route path="wishlist" element={withSuspense(<WishlistPage />)} />
         </Route>
       </Route>
     </Routes>

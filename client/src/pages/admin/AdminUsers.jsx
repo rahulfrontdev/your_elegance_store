@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { adminFetchUserById, adminFetchUsers } from '../../api/adminApi'
+import { adminFetchUserById, adminFetchUsers, adminUpdateUser } from '../../api/adminApi'
+import { fetchSpecialDiscountCategories } from '../../api/specialDiscountApi'
 import { Loader2, Search, X } from 'lucide-react'
 
 function normalizeList(payload) {
@@ -49,6 +50,8 @@ const AdminUsers = () => {
   const [selectedId, setSelectedId] = useState(null)
   const [detail, setDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [discountCategories, setDiscountCategories] = useState([])
+  const [updatingUserId, setUpdatingUserId] = useState('')
 
   const load = useCallback(async () => {
     setError('')
@@ -70,6 +73,36 @@ const AdminUsers = () => {
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const { data } = await fetchSpecialDiscountCategories()
+        const rows = data?.data?.data || data?.data || []
+        setDiscountCategories(Array.isArray(rows) ? rows : [])
+      } catch {
+        setDiscountCategories([])
+      }
+    }
+    loadCategories()
+  }, [])
+
+  const updateUserDiscountCategory = async (userId, specialDiscountCategoryId) => {
+    setUpdatingUserId(userId)
+    setError('')
+    try {
+      await adminUpdateUser(userId, { specialDiscountCategoryId })
+      await load()
+      if (selectedId === userId) {
+        const { data } = await adminFetchUserById(userId)
+        setDetail(data?.data ?? data)
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Could not update discount category.')
+    } finally {
+      setUpdatingUserId('')
+    }
+  }
 
   const openDetail = async (id) => {
     setSelectedId(id)
@@ -156,6 +189,7 @@ const AdminUsers = () => {
                 <th className="px-4 py-3 font-semibold">Name</th>
                 <th className="px-4 py-3 font-semibold">Mobile</th>
                 <th className="px-4 py-3 font-semibold">Email</th>
+                <th className="px-4 py-3 font-semibold">Discount category</th>
                 <th className="px-4 py-3 font-semibold">Role</th>
                 <th className="px-4 py-3 font-semibold">Registered</th>
                 <th className="px-4 py-3 font-semibold">Actions</th>
@@ -164,18 +198,42 @@ const AdminUsers = () => {
             <tbody>
               {list.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                     No registered customers found.
                   </td>
                 </tr>
               ) : (
                 list.map((u) => {
                   const id = u._id ?? u.id
+                  const isCustomer = String(u.role || '').toLowerCase() === 'customer'
+                  const categoryId =
+                    u.specialDiscountCategory?._id || u.specialDiscountCategory?.id || ''
                   return (
                     <tr key={id} className="border-b border-slate-100 last:border-0">
                       <td className="px-4 py-3 font-medium text-slate-900">{u.name ?? '—'}</td>
                       <td className="px-4 py-3 text-slate-600">{u.mobile || '—'}</td>
                       <td className="px-4 py-3 text-slate-600">{u.email || '—'}</td>
+                      <td className="px-4 py-3">
+                        {isCustomer ? (
+                          <select
+                            value={categoryId}
+                            onChange={(e) => updateUserDiscountCategory(id, e.target.value)}
+                            disabled={updatingUserId === id || discountCategories.length === 0}
+                            className="min-w-[140px] rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs outline-none focus:border-slate-400 disabled:opacity-60"
+                          >
+                            {discountCategories.map((cat) => {
+                              const catId = cat._id || cat.id
+                              return (
+                                <option key={catId} value={catId}>
+                                  {cat.name} ({Number(cat.discountPercentage ?? 0)}%)
+                                </option>
+                              )
+                            })}
+                          </select>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${
@@ -240,6 +298,39 @@ const AdminUsers = () => {
                   <div>
                     <dt className="text-slate-500">Email</dt>
                     <dd className="mt-0.5 font-medium text-slate-900">{detail.email || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500">Discount category</dt>
+                    <dd className="mt-0.5">
+                      {String(detail.role || '').toLowerCase() === 'customer' ? (
+                        <select
+                          value={
+                            detail.specialDiscountCategory?._id ||
+                            detail.specialDiscountCategory?.id ||
+                            ''
+                          }
+                          onChange={(e) =>
+                            updateUserDiscountCategory(
+                              detail._id || detail.id,
+                              e.target.value
+                            )
+                          }
+                          disabled={updatingUserId === (detail._id || detail.id)}
+                          className="mt-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-slate-400"
+                        >
+                          {discountCategories.map((cat) => {
+                            const catId = cat._id || cat.id
+                            return (
+                              <option key={catId} value={catId}>
+                                {cat.name} ({Number(cat.discountPercentage ?? 0)}%)
+                              </option>
+                            )
+                          })}
+                        </select>
+                      ) : (
+                        <span className="font-medium text-slate-900">—</span>
+                      )}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-slate-500">Role</dt>

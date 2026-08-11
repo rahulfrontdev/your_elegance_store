@@ -116,7 +116,6 @@ export function removeFilterChip(searchParams, chip) {
 }
 
 export function filterProducts(products, filters) {
-  const q = filters.q.toLowerCase()
   const normalizedCategories = filters.categories.map((name) => name.toLowerCase())
   const normalizedCategoryId = filters.categoryId.toLowerCase()
   const normalizedSubcategory = filters.subcategory.toLowerCase()
@@ -179,11 +178,6 @@ export function filterProducts(products, filters) {
           (!normalizedSubcategoryName || ![productName, productSlug].includes(normalizedSubcategoryName))))
     ) {
       return false
-    }
-
-    if (q) {
-      const hay = `${product.name} ${product.brand ?? ''} ${product.description ?? ''}`.toLowerCase()
-      if (!hay.includes(q)) return false
     }
 
     return true

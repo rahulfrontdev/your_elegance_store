@@ -181,9 +181,18 @@ const Login = ({ roleMode = 'customer' }) => {
                         </div>
 
                         <div>
-                            <label htmlFor="password" className="mb-1 block text-xs font-medium text-neutral-800">
-                                Password
-                            </label>
+                            <div className="mb-1 flex items-center justify-between gap-2">
+                                <label htmlFor="password" className="block text-xs font-medium text-neutral-800">
+                                    Password
+                                </label>
+                                <Link
+                                    to="/forgot-password"
+                                    state={isAdminLogin ? { from: '/admin/login' } : undefined}
+                                    className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                                >
+                                    Forgot password?
+                                </Link>
+                            </div>
                             <input
                                 id="password"
                                 name="password"

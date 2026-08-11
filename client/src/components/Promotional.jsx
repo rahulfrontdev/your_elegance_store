@@ -30,15 +30,13 @@ const defaultBanners = [
 const Promotional = () => {
   const navigate = useNavigate()
   const [banners, setBanners] = useState(defaultBanners)
-  const [loading, setLoading] = useState(true)
 
   useLayoutEffect(() => {
-    if (loading) return undefined
     const id = window.requestAnimationFrame(() => {
       window.dispatchEvent(new Event('resize'))
     })
     return () => window.cancelAnimationFrame(id)
-  }, [loading, banners.length])
+  }, [banners.length])
 
   useEffect(() => {
     const refreshCarouselLayout = () => {
@@ -55,18 +53,15 @@ const Promotional = () => {
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      setLoading(true)
       try {
         const res = await fetchPublicCarouselSlides()
         if (cancelled) return
         const slides = normalizeCarouselSlideList(res.data).filter(
           (s) => s.isActive !== false && s.image
         )
-        setBanners(slides.length ? slides : defaultBanners)
+        if (slides.length) setBanners(slides)
       } catch {
-        if (!cancelled) setBanners(defaultBanners)
-      } finally {
-        if (!cancelled) setLoading(false)
+        /* keep default banners */
       }
     }
     load()
@@ -82,14 +77,6 @@ const Promotional = () => {
       return
     }
     window.open(linkUrl, '_blank', 'noopener,noreferrer')
-  }
-
-  if (loading) {
-    return (
-      <div className="w-full home-hero">
-        <div className="home-hero__slide home-hero__slide--loading" aria-hidden />
-      </div>
-    )
   }
 
   return (

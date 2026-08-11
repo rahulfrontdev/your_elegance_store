@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useSearchParams } from 'react-router-dom'
 import { fetchRootCategories } from '../../api/categoriesApi'
 import ActiveFilterChips from '../../components/products/ActiveFilterChips'
+import { useAuth } from '../../context/AuthContext.jsx'
 import { loadProducts } from '../../features/products/productsSlice'
 import {
   buildProductsPath,
@@ -22,6 +23,7 @@ const SEARCH_DEBOUNCE_MS = 300
 
 const ProductsPage = () => {
   const dispatch = useDispatch()
+  const { isAuthenticated } = useAuth()
   const { list: products, status, error } = useSelector((state) => state.products)
   const [searchParams, setSearchParams] = useSearchParams()
   const filters = useMemo(() => parseProductFilters(searchParams), [searchParams])
@@ -44,8 +46,11 @@ const ProductsPage = () => {
 
   useEffect(() => {
     const categoryQuery = filters.categories.length === 1 ? filters.categories[0] : undefined
-    dispatch(loadProducts(categoryQuery ? { category: categoryQuery } : {}))
-  }, [dispatch, filters.categories.join('|')])
+    const params = {}
+    if (categoryQuery) params.category = categoryQuery
+    if (filters.q) params.q = filters.q
+    dispatch(loadProducts(params))
+  }, [dispatch, filters.categories.join('|'), filters.q, isAuthenticated])
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -203,7 +208,7 @@ const ProductsPage = () => {
           ) : (
             <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {filteredProducts.map((product) => (
-                <li key={product._id || product.id || product.slug}>
+                <li key={product._id || product.id || product.slug} className="h-full">
                   <ProductCard product={product} returnPath={returnPath} />
                 </li>
               ))}

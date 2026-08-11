@@ -10,7 +10,7 @@ const {
   updateProduct,
   deleteProduct,
 } = require('../controllers/productController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect, admin, optionalProtect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/multer/multer');
 
 /**
@@ -42,12 +42,12 @@ const productUpload = (req, res, next) => {
 
 const router = express.Router();
 
-router.get('/', getProducts);
-router.get('/latest', getLatestProducts);
-router.get('/best-deals', getBestDealProducts);
-router.get('/category/:categoryId', getProductsByCategory);
+router.get('/', optionalProtect, getProducts);
+router.get('/latest', optionalProtect, getLatestProducts);
+router.get('/best-deals', optionalProtect, getBestDealProducts);
+router.get('/category/:categoryId', optionalProtect, getProductsByCategory);
 router.get('/gst-rates', getGstRates);
-router.get('/:id', getProductById);
+router.get('/:id', optionalProtect, getProductById);
 router.post('/', protect, admin, productUpload, createProduct);
 router.put('/:id', protect, admin, productUpload, updateProduct);
 router.delete('/:id', protect, admin, deleteProduct);

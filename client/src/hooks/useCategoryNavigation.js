@@ -101,43 +101,64 @@ async function loadCategoryWithDescendants(category, depth = 0) {
   return { ...category, children }
 }
 
+let cachedCategories = null
+let categoriesLoadPromise = null
+
+export async function loadNavigationCategories() {
+  if (cachedCategories) return cachedCategories
+  if (categoriesLoadPromise) return categoriesLoadPromise
+
+  categoriesLoadPromise = (async () => {
+    try {
+      try {
+        const treeResponse = await fetchCategoryTree()
+        const tree = pickList(treeResponse?.data).filter(
+          (category) => pickName(category) && isActiveCategory(category)
+        )
+        if (tree.length) {
+          cachedCategories = tree
+          return tree
+        }
+      } catch {
+        /* fall back below */
+      }
+
+      const rootResponse = await fetchRootCategories()
+      const roots = pickList(rootResponse?.data).filter(
+        (category) => pickName(category) && isActiveCategory(category)
+      )
+      const rootsWithChildren = await Promise.all(
+        roots.map(async (root) => {
+          try {
+            return await loadCategoryWithDescendants(root)
+          } catch {
+            return root
+          }
+        })
+      )
+      cachedCategories = rootsWithChildren
+      return rootsWithChildren
+    } catch {
+      cachedCategories = []
+      return []
+    } finally {
+      categoriesLoadPromise = null
+    }
+  })()
+
+  return categoriesLoadPromise
+}
+
 export function useCategoryNavigation() {
-  const [categories, setCategories] = useState([])
+  const [categories, setCategories] = useState(() => cachedCategories || [])
 
   useEffect(() => {
     let cancelled = false
 
-    const loadCategories = async () => {
-      try {
-        try {
-          const treeResponse = await fetchCategoryTree()
-          const tree = pickList(treeResponse?.data).filter((category) => pickName(category) && isActiveCategory(category))
-          if (tree.length) {
-            if (!cancelled) setCategories(tree)
-            return
-          }
-        } catch {
-          // Fall back to root + children endpoints when tree is unavailable publicly.
-        }
+    loadNavigationCategories().then((list) => {
+      if (!cancelled) setCategories(list)
+    })
 
-        const rootResponse = await fetchRootCategories()
-        const roots = pickList(rootResponse?.data).filter((category) => pickName(category) && isActiveCategory(category))
-        const rootsWithChildren = await Promise.all(
-          roots.map(async (root) => {
-            try {
-              return await loadCategoryWithDescendants(root)
-            } catch {
-              return root
-            }
-          })
-        )
-        if (!cancelled) setCategories(rootsWithChildren)
-      } catch {
-        if (!cancelled) setCategories([])
-      }
-    }
-
-    loadCategories()
     return () => {
       cancelled = true
     }

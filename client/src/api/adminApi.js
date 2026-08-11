@@ -105,6 +105,8 @@ export const adminFetchRootCategories = (options = {}) =>
   axiosInstance.get('/categories/getRoot', { params: options })
 export const adminFetchCategoryChildren = (id, options = {}) =>
   axiosInstance.get(`/categories/${id}/children`, { params: options })
+export const adminFetchCategoryById = (id, options = {}) =>
+  axiosInstance.get(`/categories/${id}`, { params: options })
 export const adminUpdateCategory = (id, body) => axiosInstance.put(`/categories/${id}`, body)
 export const adminDeleteCategory = (id) => axiosInstance.delete(`/categories/${id}`)
 export const adminToggleCategoryStatus = (id) => axiosInstance.patch(`/categories/${id}/toggle-status`)

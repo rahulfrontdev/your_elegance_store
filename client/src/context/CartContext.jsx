@@ -355,7 +355,17 @@ export function CartProvider({ children }) {
   }, [applyNormalizedCart, syncCart])
 
   useEffect(() => {
-    syncCart()
+    const run = () => {
+      syncCart()
+    }
+
+    if (typeof window.requestIdleCallback === 'function') {
+      const idleId = window.requestIdleCallback(run, { timeout: 2500 })
+      return () => window.cancelIdleCallback(idleId)
+    }
+
+    const timeoutId = window.setTimeout(run, 150)
+    return () => window.clearTimeout(timeoutId)
   }, [syncCart])
 
   useEffect(() => {
@@ -564,6 +574,7 @@ export function CartProvider({ children }) {
       shippingAddress: {
         fullName: shippingAddress.fullName,
         mobile: shippingAddress.mobile,
+        email: shippingAddress.email || '',
         addressLine1: shippingAddress.addressLine1,
         addressLine2: shippingAddress.addressLine2 || '',
         landmark: shippingAddress.landmark || '',

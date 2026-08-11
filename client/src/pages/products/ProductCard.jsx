@@ -7,7 +7,9 @@ const isActiveDiscount = (value) => value === true || value === 'true' || value 
 
 const ProductCard = ({ product, returnPath = '/products' }) => {
   const productId = stringifyEntityId(product?._id ?? product?.id)
-  const imageSrc = resolveMediaUrl(product?.imageUrl || product?.image)
+  const imageSrc = resolveMediaUrl(
+    product?.imageUrl || product?.image || product?.images?.[0] || ''
+  )
   const brandLabel =
     product?.brand || (typeof product?.category === 'object' ? product?.category?.name : '')
   const discountPercent = Number(product?.discountPercentage ?? 0)
@@ -32,13 +34,13 @@ const ProductCard = ({ product, returnPath = '/products' }) => {
       state={{ from: returnPath }}
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-lg"
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-neutral-50">
+      <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-neutral-50">
         {imageSrc ? (
           <OptimizedImage
             src={imageSrc}
             alt={product?.name || 'Product'}
             preset="card"
-            className="absolute inset-0 h-full w-full object-contain object-center p-2"
+            className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-[1.02]"
             onError={(e) => {
               e.currentTarget.style.display = 'none'
               const fallback = e.currentTarget.nextElementSibling
@@ -48,7 +50,7 @@ const ProductCard = ({ product, returnPath = '/products' }) => {
         ) : null}
         <div
           hidden={Boolean(imageSrc)}
-          className="flex h-full w-full items-center justify-center text-xs text-neutral-400"
+          className="absolute inset-0 flex items-center justify-center text-xs text-neutral-400"
         >
           No Image
         </div>

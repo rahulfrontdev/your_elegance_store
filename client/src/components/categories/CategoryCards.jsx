@@ -1,24 +1,26 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import OptimizedImage from '../common/OptimizedImage'
-import { fetchRootCategories } from '../../api/categoriesApi'
+import { loadNavigationCategories } from '../../hooks/useCategoryNavigation'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 const CategoryCards = () => {
   const [categories, setCategories] = useState([])
 
   useEffect(() => {
-    const loadRootCategories = async () => {
-      try {
-        const response = await fetchRootCategories()
-        setCategories(response?.data?.data || [])
-      } catch (error) {
-        console.error('Error loading home categories:', error)
-        setCategories([])
-      }
-    }
+    let cancelled = false
 
-    loadRootCategories()
+    loadNavigationCategories()
+      .then((list) => {
+        if (!cancelled) setCategories(Array.isArray(list) ? list : [])
+      })
+      .catch(() => {
+        if (!cancelled) setCategories([])
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   return (

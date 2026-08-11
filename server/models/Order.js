@@ -64,6 +64,7 @@ const shippingAddressSchema = new mongoose.Schema(
     state: { type: String, required: true, trim: true },
     pincode: { type: String, required: true, trim: true },
     country: { type: String, required: true, trim: true },
+    email: { type: String, default: '', trim: true, lowercase: true },
   },
   { _id: false }
 );

@@ -32,9 +32,25 @@ const userSchema = new mongoose.Schema(
       enum: ['customer', 'admin'],
       default: 'customer',
     },
+    specialDiscountCategory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SpecialDiscountCategory',
+      default: null,
+      index: true,
+    },
     wishlist: {
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
       default: [],
+    },
+    resetPasswordToken: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      default: null,
+      select: false,
     },
   },
   { timestamps: true }

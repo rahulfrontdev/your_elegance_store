@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import HomeSectionProductCard from '../products/HomeSectionProductCard'
-import { fetchBestDealProducts, fetchProducts } from '../../api/productsApi'
-
-const isActiveDiscount = (value) => value === true || value === 'true' || value === 1 || value === '1'
+import { fetchBestDealProducts } from '../../api/productsApi'
 
 function normalizeBestDealList(payload) {
   const root = payload?.data
@@ -19,7 +17,7 @@ function normalizeBestDealList(payload) {
   return list.map((p) => {
     const id = p?._id || p?.id
     const name = p?.name || 'Product'
-    const image = p?.imageUrl || p?.image || ''
+    const image = p?.imageUrl || p?.image || p?.images?.[0] || ''
     const originalPrice = Number(p?.originalPrice ?? p?.price ?? 0)
     const discountedPrice = Number(p?.discountedPrice ?? p?.price ?? 0)
     const discountAmount = Number(p?.discountAmount ?? 0)
@@ -39,15 +37,6 @@ function normalizeBestDealList(payload) {
   })
 }
 
-function mergeById(...lists) {
-  const map = new Map()
-  lists.flat().forEach((item) => {
-    if (!item?.id) return
-    map.set(String(item.id), { ...(map.get(String(item.id)) || {}), ...item })
-  })
-  return Array.from(map.values())
-}
-
 const BestDeal = () => {
   const [items, setItems] = useState([])
   const [status, setStatus] = useState('idle')
@@ -58,21 +47,8 @@ const BestDeal = () => {
       setStatus('loading')
       setError('')
       try {
-        const [dealRes, allProductRes] = await Promise.allSettled([
-          fetchBestDealProducts(),
-          fetchProducts(),
-        ])
-
-        const bestDealItems =
-          dealRes.status === 'fulfilled' ? normalizeBestDealList(dealRes.value.data) : []
-        const activeProducts =
-          allProductRes.status === 'fulfilled'
-            ? normalizeBestDealList(allProductRes.value.data).filter((item) =>
-                isActiveDiscount(item.raw?.hasActiveDiscount)
-              )
-            : []
-
-        setItems(mergeById(bestDealItems, activeProducts))
+        const dealRes = await fetchBestDealProducts({ limit: 8 })
+        setItems(normalizeBestDealList(dealRes.data))
         setStatus('succeeded')
       } catch (e) {
         setStatus('failed')

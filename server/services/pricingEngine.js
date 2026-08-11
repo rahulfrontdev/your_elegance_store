@@ -3,6 +3,10 @@ const Product = require('../models/Product');
 const Discount = require('../models/Discount');
 const DiscountUsage = require('../models/DiscountUsage');
 const { expandCatalogToCategoryIdSet, getDescendantCategoryIds } = require('./categoryTree');
+const {
+  getUserSpecialDiscountInfo,
+  pickBestDiscount,
+} = require('./specialDiscountService');
 
 const baseUnitPrice = (product) => {
   if (!product) return 0;
@@ -257,7 +261,7 @@ async function calculateOrderPricing({ userId, items, discountCode }) {
     const discountTotal = Number(lines.reduce((s, l) => s + l.discountAmount, 0).toFixed(2));
     const finalTotal = Number((subtotal - discountTotal).toFixed(2));
 
-    return {
+    const couponResult = {
       subtotal,
       discountTotal,
       finalTotal,
@@ -266,7 +270,20 @@ async function calculateOrderPricing({ userId, items, discountCode }) {
       appliedDiscountIds: [coupon._id],
       lines,
     };
+
+    const autoResult = await buildAutoPricedOrder(preliminary, subtotal, userId);
+    if (autoResult.finalTotal < couponResult.finalTotal) {
+      return autoResult;
+    }
+
+    return couponResult;
   }
+
+  return buildAutoPricedOrder(preliminary, subtotal, userId);
+}
+
+async function buildAutoPricedOrder(preliminary, subtotal, userId) {
+  const specialInfo = await getUserSpecialDiscountInfo(userId);
 
   const rawAuto = await Discount.find({
     status: 'active',
@@ -315,10 +332,13 @@ async function calculateOrderPricing({ userId, items, discountCode }) {
         eligible.push(d);
       }
     }
-    const winner = pickBestLineDiscount(row.lineSubtotal, eligible);
-    const discountAmount = winner ? winner.discountAmount : 0;
+    const campaignWinner = pickBestLineDiscount(row.lineSubtotal, eligible);
+    const best = pickBestDiscount(row.lineSubtotal, campaignWinner, specialInfo);
+    const discountAmount = best.discountAmount;
     const finalLineTotal = Number((row.lineSubtotal - discountAmount).toFixed(2));
-    if (winner?.discount?._id) appliedIds.add(String(winner.discount._id));
+    if (best.source === 'campaign' && best.appliedDiscount?._id) {
+      appliedIds.add(String(best.appliedDiscount._id));
+    }
 
     lines.push({
       productId: row.product._id,
@@ -330,9 +350,9 @@ async function calculateOrderPricing({ userId, items, discountCode }) {
       lineSubtotal: row.lineSubtotal,
       discountAmount,
       finalLineTotal,
-      appliedDiscountId: winner?.discount?._id || null,
-      appliedDiscountName: winner?.discount?.discountName || '',
-      discountType: winner?.discount?.discountType || '',
+      appliedDiscountId: best.source === 'campaign' ? best.appliedDiscount?._id || null : null,
+      appliedDiscountName: best.appliedDiscount?.discountName || '',
+      discountType: best.appliedDiscount?.discountType || '',
     });
   }
 
@@ -344,7 +364,7 @@ async function calculateOrderPricing({ userId, items, discountCode }) {
     discountTotal,
     finalTotal,
     couponCode: '',
-    stackingMode: 'auto_line_best_priority',
+    stackingMode: specialInfo.percent > 0 ? 'special_or_campaign_best' : 'auto_line_best_priority',
     appliedDiscountIds: Array.from(appliedIds).map((id) => new mongoose.Types.ObjectId(id)),
     lines,
   };
@@ -375,38 +395,53 @@ async function getEligibleAutoDiscounts(userId = null) {
 }
 
 async function buildExpansionCache(discounts) {
-  const expansionCache = new Map();
-  for (const d of discounts) {
-    const key = String(d._id);
-    expansionCache.set(key, {
-      categorySet: await buildCategoryExpansionForDiscount(d),
-      catalogCache: await buildCatalogCacheForDiscount(d),
-    });
+  const entries = await Promise.all(
+    discounts.map(async (d) => {
+      const key = String(d._id);
+      const [categorySet, catalogCache] = await Promise.all([
+        buildCategoryExpansionForDiscount(d),
+        buildCatalogCacheForDiscount(d),
+      ]);
+      return [key, { categorySet, catalogCache }];
+    })
+  );
+  return new Map(entries);
+}
+
+const LISTING_DISCOUNT_CACHE_TTL_MS = 120_000;
+let listingDiscountCache = {
+  expiresAt: 0,
+  autoDiscounts: [],
+  expansionCache: new Map(),
+};
+
+async function getListingDiscountContext() {
+  if (Date.now() < listingDiscountCache.expiresAt) {
+    return listingDiscountCache;
   }
-  return expansionCache;
+
+  const autoDiscounts = await getEligibleAutoDiscounts(null);
+  const expansionCache =
+    autoDiscounts.length > 0 ? await buildExpansionCache(autoDiscounts) : new Map();
+
+  listingDiscountCache = {
+    expiresAt: Date.now() + LISTING_DISCOUNT_CACHE_TTL_MS,
+    autoDiscounts,
+    expansionCache,
+  };
+
+  return listingDiscountCache;
+}
+
+function invalidateListingDiscountCache() {
+  listingDiscountCache.expiresAt = 0;
 }
 
 async function enrichProductsWithCampaignPricing(products = [], { userId = null } = {}) {
   if (!Array.isArray(products) || products.length === 0) return products;
 
-  const autoDiscounts = await getEligibleAutoDiscounts(userId);
-  if (autoDiscounts.length === 0) {
-    return products.map((product) => {
-      const p = typeof product.toObject === 'function' ? product.toObject() : product;
-      const originalPrice = baseUnitPrice(p);
-      return {
-        ...p,
-        originalPrice,
-        discountAmount: 0,
-        discountPercentage: 0,
-        discountedPrice: originalPrice,
-        hasActiveDiscount: false,
-        appliedDiscount: null,
-      };
-    });
-  }
-
-  const expansionCache = await buildExpansionCache(autoDiscounts);
+  const specialInfo = await getUserSpecialDiscountInfo(userId);
+  const { autoDiscounts, expansionCache } = await getListingDiscountContext();
 
   return products.map((product) => {
     const p = typeof product.toObject === 'function' ? product.toObject() : product;
@@ -423,8 +458,9 @@ async function enrichProductsWithCampaignPricing(products = [], { userId = null 
       }
     }
 
-    const winner = pickBestLineDiscount(originalPrice, eligible);
-    const discountAmount = winner ? winner.discountAmount : 0;
+    const campaignWinner = pickBestLineDiscount(originalPrice, eligible);
+    const best = pickBestDiscount(originalPrice, campaignWinner, specialInfo);
+    const discountAmount = best.discountAmount;
     const discountedPrice = Number((originalPrice - discountAmount).toFixed(2));
     const discountPercentage =
       originalPrice > 0 ? Number(((discountAmount / originalPrice) * 100).toFixed(2)) : 0;
@@ -436,18 +472,8 @@ async function enrichProductsWithCampaignPricing(products = [], { userId = null 
       discountPercentage,
       discountedPrice,
       hasActiveDiscount: discountAmount > 0,
-      appliedDiscount: winner
-        ? {
-            _id: winner.discount._id,
-            discountName: winner.discount.discountName,
-            discountType: winner.discount.discountType,
-            discountValue: winner.discount.discountValue,
-            festivalTag: winner.discount.festivalTag || '',
-            priority: winner.discount.priority,
-            startDate: winner.discount.startDate,
-            endDate: winner.discount.endDate,
-          }
-        : null,
+      appliedDiscount: best.appliedDiscount,
+      specialDiscountCategory: best.source === 'special' ? specialInfo.categoryName : '',
     };
   });
 }
@@ -458,4 +484,5 @@ module.exports = {
   enrichProductsWithCampaignPricing,
   computeRawDiscountOnAmount,
   assertUsageAllowed,
+  invalidateListingDiscountCache,
 };

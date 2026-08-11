@@ -4,6 +4,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { getRazorpayClient } = require('../utils/razorpay');
 const { calculateOrderPricing } = require('../services/pricingEngine');
 const discountService = require('../services/discountService');
+const { queueOrderPaidEmails } = require('../services/orderEmailService');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const { recalculateApprovedRating } = require('../utils/reviewUtils');
@@ -24,6 +25,13 @@ const ORDER_STATUS_ALIASES = {
 const normalizeOrderStatus = (status) => {
   const normalized = String(status || '').trim().toLowerCase();
   return ORDER_STATUS_ALIASES[normalized] || null;
+};
+
+const normalizeOrderEmail = (value) => {
+  const email = String(value || '').trim().toLowerCase();
+  if (!email) return '';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return '';
+  return email;
 };
 
 const validateShippingAddress = (address = {}) => {
@@ -272,6 +280,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
       state: String(shippingAddress.state).trim(),
       pincode: String(shippingAddress.pincode).trim(),
       country: String(shippingAddress.country).trim(),
+      email: normalizeOrderEmail(shippingAddress.email || req.body?.customerEmail || req.user?.email),
     },
     totalAmount,
     paymentMethod: 'ONLINE',
@@ -350,6 +359,13 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
     await order.save();
 
     await discountService.recordDiscountUsageForOrder(order._id);
+
+    const populatedOrder = await Order.findById(order._id)
+      .populate('user', 'name email mobile role')
+      .lean();
+    if (populatedOrder) {
+      queueOrderPaidEmails(populatedOrder);
+    }
 
     const [orderPayload] = await attachImagesToOrders([order.toObject()]);
     return res.status(200).json({

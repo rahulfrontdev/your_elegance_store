@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const path = require('path');
+const compression = require('compression');
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -20,12 +21,14 @@ const addressRoutes = require('./routes/addressRoutes');
 const reelRoutes = require('./routes/reelRoutes');
 const userRoutes = require('./routes/userRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
+const specialDiscountCategoryRoutes = require('./routes/specialDiscountCategoryRoutes');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 // const subCategoryRoutes = require('./routes/subCategoryRoutes');
 
 const app = express();
 
 // Middleware
+app.use(compression());
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
@@ -56,6 +59,7 @@ app.use('/api/address', addressRoutes);
 app.use('/api/reels', reelRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/special-discount-categories', specialDiscountCategoryRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'E-commerce API is running' });

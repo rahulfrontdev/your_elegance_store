@@ -1,18 +1,24 @@
 const asyncHandler = require('../utils/asyncHandler');
 const discountService = require('../services/discountService');
+const { invalidateListingDiscountCache } = require('../services/pricingEngine');
+
+const bustListingPricingCache = () => invalidateListingDiscountCache();
 
 exports.create = asyncHandler(async (req, res) => {
   const doc = await discountService.createDiscount(req.body, req.user._id);
+  bustListingPricingCache();
   res.status(201).json({ success: true, message: 'Discount created', data: doc });
 });
 
 exports.update = asyncHandler(async (req, res) => {
   const doc = await discountService.updateDiscount(req.params.id, req.body);
+  bustListingPricingCache();
   res.json({ success: true, message: 'Discount updated', data: doc });
 });
 
 exports.remove = asyncHandler(async (req, res) => {
   await discountService.deleteDiscount(req.params.id);
+  bustListingPricingCache();
   res.json({ success: true, message: 'Discount deleted' });
 });
 
@@ -28,6 +34,7 @@ exports.list = asyncHandler(async (req, res) => {
 
 exports.patchStatus = asyncHandler(async (req, res) => {
   const doc = await discountService.patchDiscountStatus(req.params.id, req.body.status);
+  bustListingPricingCache();
   res.json({ success: true, message: 'Status updated', data: doc });
 });
 

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   adminCreateProduct,
   adminDeleteProduct,
+  adminFetchCategoryById,
   adminFetchCategoryChildren,
   adminFetchProductById,
   adminFetchProductGstRates,
@@ -10,6 +11,8 @@ import {
   adminUpdateProduct,
 } from "../../api/adminApi";
 import UploadProgressBar from "../../components/admin/UploadProgressBar";
+import OptimizedImage from "../../components/common/OptimizedImage";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 
 function formatProductSaveError(error) {
   const d = error?.response?.data
@@ -47,7 +50,8 @@ const initialFormState = {
   sku: "",
   name: "",
   category: "",
-  subcategory: "",
+  childCategory: "",
+  grandchildCategory: "",
   colour: "",
   price: "",
   description: "",
@@ -64,10 +68,71 @@ const initialFormState = {
 const MAX_EXTRA_IMAGES = 8;
 const DEFAULT_GST_RATES = [3, 12, 18];
 
+function categoryEntityId(item) {
+  return String(item?._id || item?.id || "").trim();
+}
+
+function resolveProductSubcategoryId(form) {
+  return String(form.grandchildCategory || form.childCategory || "").trim();
+}
+
+async function buildCategoryChainFromLeaf(leafId) {
+  const chain = [];
+  let currentId = String(leafId || "").trim();
+
+  while (currentId) {
+    const response = await adminFetchCategoryById(currentId, { all: true });
+    const category = response?.data?.data;
+    if (!category) break;
+
+    chain.unshift({
+      id: categoryEntityId(category),
+      level: Number(category.level ?? chain.length),
+    });
+
+    const parent = category.parentId;
+    currentId =
+      parent && typeof parent === "object"
+        ? categoryEntityId(parent)
+        : String(parent || "").trim();
+  }
+
+  return chain;
+}
+
+function chainToFormSelection(chain = []) {
+  if (!Array.isArray(chain) || chain.length === 0) {
+    return { category: "", childCategory: "", grandchildCategory: "" };
+  }
+
+  if (chain.length === 1) {
+    return {
+      category: chain[0]?.id || "",
+      childCategory: "",
+      grandchildCategory: "",
+    };
+  }
+
+  if (chain.length === 2) {
+    return {
+      category: chain[0]?.id || "",
+      childCategory: chain[1]?.id || "",
+      grandchildCategory: "",
+    };
+  }
+
+  return {
+    category: chain[0]?.id || "",
+    childCategory: chain[chain.length - 2]?.id || "",
+    grandchildCategory: chain[chain.length - 1]?.id || "",
+  };
+}
+
 const AdminProducts = () => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [subcategories, setSubcategories] = useState([]);
+  const [childCategories, setChildCategories] = useState([]);
+  const [grandchildCategories, setGrandchildCategories] = useState([]);
   const [gstRates, setGstRates] = useState([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -76,6 +141,7 @@ const AdminProducts = () => {
   const [existingImageUrl, setExistingImageUrl] = useState("");
   const [existingExtraImages, setExistingExtraImages] = useState([]);
   const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
+  const [grandchildCategoriesLoading, setGrandchildCategoriesLoading] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -126,30 +192,69 @@ const AdminProducts = () => {
     }
   };
 
-  const loadSubcategories = async (categoryId, preselectedSubcategoryId = "") => {
+  const loadChildCategories = async (categoryId) => {
     if (!categoryId) {
-      setSubcategories([]);
-      return;
+      setChildCategories([]);
+      return [];
     }
     try {
       setSubcategoriesLoading(true);
       const response = await adminFetchCategoryChildren(categoryId, { all: true });
       const list = response?.data?.data || [];
-      setSubcategories(list);
-      if (preselectedSubcategoryId) {
-        setProductForm((prev) => ({ ...prev, subcategory: preselectedSubcategoryId }));
-      }
+      setChildCategories(list);
+      return list;
     } catch (error) {
-      console.error("Error fetching subcategories:", error);
-      setSubcategories([]);
+      console.error("Error fetching child categories:", error);
+      setChildCategories([]);
+      return [];
     } finally {
       setSubcategoriesLoading(false);
     }
   };
 
+  const loadGrandchildCategories = async (childCategoryId) => {
+    if (!childCategoryId) {
+      setGrandchildCategories([]);
+      return [];
+    }
+    try {
+      setGrandchildCategoriesLoading(true);
+      const response = await adminFetchCategoryChildren(childCategoryId, { all: true });
+      const list = response?.data?.data || [];
+      setGrandchildCategories(list);
+      return list;
+    } catch (error) {
+      console.error("Error fetching grandchild categories:", error);
+      setGrandchildCategories([]);
+      return [];
+    } finally {
+      setGrandchildCategoriesLoading(false);
+    }
+  };
+
+  const hydrateCategorySelectors = async ({ categoryId, childCategoryId, grandchildCategoryId }) => {
+    setChildCategories([]);
+    setGrandchildCategories([]);
+
+    if (categoryId) {
+      await loadChildCategories(categoryId);
+    }
+    if (childCategoryId) {
+      await loadGrandchildCategories(childCategoryId);
+    }
+
+    setProductForm((prev) => ({
+      ...prev,
+      category: categoryId || "",
+      childCategory: childCategoryId || "",
+      grandchildCategory: grandchildCategoryId || "",
+    }));
+  };
+
   const resetForm = () => {
     setProductForm(initialFormState);
-    setSubcategories([]);
+    setChildCategories([]);
+    setGrandchildCategories([]);
     setExistingImageUrl("");
     setExistingExtraImages([]);
     setEditingProductId("");
@@ -168,6 +273,7 @@ const AdminProducts = () => {
 
       const categoryId = product?.category?._id || product?.category || "";
       const subcategoryId = product?.subcategory?._id || product?.subcategory || "";
+      const leafCategoryId = subcategoryId || categoryId;
       const variations = Array.isArray(product?.variations)
         ? product.variations.map((v) => ({
             _id: v?._id || "",
@@ -185,8 +291,9 @@ const AdminProducts = () => {
       setProductForm({
         sku: product?.sku || "",
         name: product?.name || "",
-        category: categoryId,
-        subcategory: subcategoryId,
+        category: "",
+        childCategory: "",
+        grandchildCategory: "",
         colour: product?.colour || "",
         price: product?.price?.toString?.() || "",
         description: product?.description || "",
@@ -206,8 +313,19 @@ const AdminProducts = () => {
       setExistingExtraImages(Array.isArray(product?.images) ? product.images : []);
       setIsModalOpen(true);
 
-      if (categoryId) {
-        await loadSubcategories(categoryId, subcategoryId);
+      if (leafCategoryId) {
+        try {
+          const chain = await buildCategoryChainFromLeaf(leafCategoryId);
+          const selection = chainToFormSelection(chain);
+          await hydrateCategorySelectors(selection);
+        } catch (error) {
+          console.error("Error resolving product categories:", error);
+          await hydrateCategorySelectors({
+            categoryId,
+            childCategoryId: subcategoryId || "",
+            grandchildCategoryId: "",
+          });
+        }
       }
     } catch (error) {
       console.error("Error loading product details:", error);
@@ -231,8 +349,29 @@ const AdminProducts = () => {
     }
 
     if (name === "category") {
-      setProductForm((prev) => ({ ...prev, category: value, subcategory: "" }));
-      loadSubcategories(value);
+      setProductForm((prev) => ({
+        ...prev,
+        category: value,
+        childCategory: "",
+        grandchildCategory: "",
+      }));
+      setGrandchildCategories([]);
+      loadChildCategories(value);
+      return;
+    }
+
+    if (name === "childCategory") {
+      setProductForm((prev) => ({
+        ...prev,
+        childCategory: value,
+        grandchildCategory: "",
+      }));
+      loadGrandchildCategories(value);
+      return;
+    }
+
+    if (name === "grandchildCategory") {
+      setProductForm((prev) => ({ ...prev, grandchildCategory: value }));
       return;
     }
 
@@ -329,12 +468,26 @@ const AdminProducts = () => {
       return false;
     }
 
-    if (productForm.subcategory?.trim()) {
-      const selectedSubcategoryExists = subcategories.some(
-        (sub) => (sub?._id || sub?.id) === productForm.subcategory
+    if (productForm.childCategory?.trim()) {
+      const childExists = childCategories.some(
+        (item) => categoryEntityId(item) === productForm.childCategory
       );
-      if (!selectedSubcategoryExists) {
-        alert("Selected subcategory is invalid for this category. Please reselect or clear it.");
+      if (!childExists) {
+        alert("Selected child category is invalid. Please reselect it.");
+        return false;
+      }
+    }
+
+    if (productForm.grandchildCategory?.trim()) {
+      if (!productForm.childCategory?.trim()) {
+        alert("Select a child category before choosing a grandchild category.");
+        return false;
+      }
+      const grandchildExists = grandchildCategories.some(
+        (item) => categoryEntityId(item) === productForm.grandchildCategory
+      );
+      if (!grandchildExists) {
+        alert("Selected grandchild category is invalid. Please reselect it.");
         return false;
       }
     }
@@ -397,7 +550,7 @@ const AdminProducts = () => {
     formData.append("sku", String(productForm.sku || "").trim());
     formData.append("name", productForm.name.trim());
     formData.append("category", String(productForm.category).trim());
-    const sub = String(productForm.subcategory || "").trim();
+    const sub = resolveProductSubcategoryId(productForm);
     if (sub) {
       formData.append("subcategory", sub);
     }
@@ -535,17 +688,23 @@ const AdminProducts = () => {
               const categoryName = item?.category?.name || "N/A";
               const subcategoryName = item?.subcategory?.name || "N/A";
               const variationCount = Array.isArray(item?.variations) ? item.variations.length : 0;
+              const imageSrc = resolveMediaUrl(
+                item?.imageUrl || item?.image || item?.images?.[0] || ""
+              );
               return (
-                <div key={id} className="bg-white border border-gray-200 rounded-xl p-3">
-                  <div className="w-full h-44 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center p-3">
-                    {item?.imageUrl || item?.image ? (
-                      <img
-                        src={item?.imageUrl || item?.image}
-                        alt={item?.name}
-                        className="w-full h-full object-contain"
+                <div key={id} className="flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-3">
+                  <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+                    {imageSrc ? (
+                      <OptimizedImage
+                        src={imageSrc}
+                        alt={item?.name || "Product"}
+                        preset="card"
+                        className="absolute inset-0 h-full w-full object-cover object-center"
                       />
                     ) : (
-                      <span className="text-xs font-semibold text-gray-400">No Image</span>
+                      <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-gray-400">
+                        No Image
+                      </span>
                     )}
                   </div>
 
@@ -563,7 +722,7 @@ const AdminProducts = () => {
                     <p className="text-sm font-semibold mt-1">Rs. {item?.price}</p>
                   </div>
 
-                  <div className="flex gap-2 mt-3">
+                  <div className="mt-auto flex gap-2 pt-3">
                     <button
                       onClick={() => openEditModal(id)}
                       className="text-xs px-3 py-1.5 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50"
@@ -637,7 +796,7 @@ const AdminProducts = () => {
                 onChange={handleChange}
                 className="border border-gray-300 p-2 rounded-lg outline-none"
               >
-                <option value="">Select Category *</option>
+                <option value="">Select Parent Category *</option>
                 {categories.map((cat) => (
                   <option key={cat._id || cat.id} value={cat._id || cat.id}>
                     {cat.name}
@@ -645,8 +804,8 @@ const AdminProducts = () => {
                 ))}
               </select>
               <select
-                name="subcategory"
-                value={productForm.subcategory}
+                name="childCategory"
+                value={productForm.childCategory}
                 onChange={handleChange}
                 disabled={!productForm.category || subcategoriesLoading}
                 className="border border-gray-300 p-2 rounded-lg outline-none disabled:bg-gray-100"
@@ -654,13 +813,35 @@ const AdminProducts = () => {
                 <option value="">
                   {subcategoriesLoading
                     ? "Loading..."
-                    : subcategories.length > 0
-                      ? "Subcategory (optional)"
-                      : "No subcategories"}
+                    : childCategories.length > 0
+                      ? "Child Category (optional)"
+                      : "No child categories"}
                 </option>
-                {subcategories.map((sub) => (
-                  <option key={sub._id || sub.id} value={sub._id || sub.id}>
-                    {sub.name}
+                {childCategories.map((item) => (
+                  <option key={item._id || item.id} value={item._id || item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                name="grandchildCategory"
+                value={productForm.grandchildCategory}
+                onChange={handleChange}
+                disabled={!productForm.childCategory || grandchildCategoriesLoading}
+                className="border border-gray-300 p-2 rounded-lg outline-none disabled:bg-gray-100"
+              >
+                <option value="">
+                  {grandchildCategoriesLoading
+                    ? "Loading..."
+                    : grandchildCategories.length > 0
+                      ? "Grandchild Category (optional)"
+                      : productForm.childCategory
+                        ? "No grandchild categories"
+                        : "Select child category first"}
+                </option>
+                {grandchildCategories.map((item) => (
+                  <option key={item._id || item.id} value={item._id || item.id}>
+                    {item.name}
                   </option>
                 ))}
               </select>

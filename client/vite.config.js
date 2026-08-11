@@ -128,6 +128,21 @@ export default defineConfig(({ command }) => {
     build: {
       cssMinify: true,
       sourcemap: false,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined
+            if (id.includes('react-dom') || id.includes('react-router') || id.includes('/react/')) {
+              return 'vendor-react'
+            }
+            if (id.includes('@reduxjs') || id.includes('react-redux')) return 'vendor-redux'
+            if (id.includes('react-responsive-carousel')) return 'vendor-carousel'
+            if (id.includes('@mui') || id.includes('@emotion')) return 'vendor-mui'
+            if (id.includes('axios')) return 'vendor-axios'
+            return 'vendor-misc'
+          },
+        },
+      },
     },
   }
 })

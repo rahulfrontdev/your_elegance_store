@@ -227,6 +227,7 @@ const CheckoutPage = () => {
     const shippingAddress = {
       fullName: form.fullName.trim(),
       mobile: form.mobile.trim(),
+      email: form.email.trim().toLowerCase(),
       addressLine1: form.addressLine1.trim(),
       addressLine2: form.addressLine2.trim(),
       landmark: form.landmark.trim(),

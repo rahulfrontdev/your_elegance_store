@@ -25,6 +25,8 @@ const ROUTE_TITLES = {
   '/return-policy': `Return & Refund Policy | ${SITE_NAME}`,
   '/shipping-policy': `Shipping Policy | ${SITE_NAME}`,
   '/login': `Sign In | ${SITE_NAME}`,
+  '/forgot-password': `Forgot Password | ${SITE_NAME}`,
+  '/reset-password': `Reset Password | ${SITE_NAME}`,
   '/register': `Create Account | ${SITE_NAME}`,
   '/account': `My Account | ${SITE_NAME}`,
   '/account/orders': `My Orders | ${SITE_NAME}`,

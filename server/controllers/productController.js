@@ -6,11 +6,63 @@ const { uploadOptimizedImage } = require('../utils/imageOptimizer');
 const { enrichProductsWithCampaignPricing } = require('../services/pricingEngine');
 const {
   sanitizeProductReviewsForPublic,
-  sanitizeProductsReviewsForPublic,
 } = require('../utils/reviewUtils');
+const {
+  PRODUCT_LISTING_SELECT,
+  productListingPopulate,
+  toPublicListingProducts,
+} = require('../utils/productListing');
 
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const pricingUserId = (req) => (req.user?._id ? String(req.user._id) : null);
+
+const BEST_DEALS_CACHE_TTL_MS = 60_000;
+const bestDealsResponseCache = new Map();
+
+function getBestDealsCacheKey(userId, limit, minDiscountPercent) {
+  return `${userId || 'guest'}:${limit}:${minDiscountPercent}`;
+}
+
+function readBestDealsFromCache(userId, limit, minDiscountPercent) {
+  const key = getBestDealsCacheKey(userId, limit, minDiscountPercent);
+  const entry = bestDealsResponseCache.get(key);
+  if (!entry || Date.now() >= entry.expiresAt) {
+    bestDealsResponseCache.delete(key);
+    return null;
+  }
+  return entry.payload;
+}
+
+function storeBestDealsInCache(userId, limit, minDiscountPercent, payload) {
+  const key = getBestDealsCacheKey(userId, limit, minDiscountPercent);
+  bestDealsResponseCache.set(key, {
+    expiresAt: Date.now() + BEST_DEALS_CACHE_TTL_MS,
+    payload,
+  });
+}
+
+function appendTextSearchFilter(filter, rawQuery) {
+  const term = String(rawQuery || '').trim();
+  if (!term) return filter;
+
+  const regex = new RegExp(escapeRegex(term), 'i');
+  const searchClause = {
+    $or: [{ name: regex }, { brand: regex }, { description: regex }, { sku: regex }],
+  };
+
+  const existing = { ...filter };
+  Object.keys(filter).forEach((key) => delete filter[key]);
+
+  if (Object.keys(existing).length === 0) {
+    Object.assign(filter, searchClause);
+  } else {
+    filter.$and = [existing, searchClause];
+  }
+
+  return filter;
+}
 
 async function assertCategoryAndSubcategory(parentId, subId) {
   const normalizedSubId = normalizeOptionalObjectId(subId);
@@ -31,6 +83,14 @@ async function assertCategoryAndSubcategory(parentId, subId) {
     return { ok: false, status: 400, message: 'Invalid subcategory id' };
   }
 
+  if (String(parentId) === String(normalizedSubId)) {
+    return {
+      ok: false,
+      status: 400,
+      message: 'Category and subcategory cannot be the same',
+    };
+  }
+
   const [parentCat, subCat] = await Promise.all([
     Category.findById(parentId),
     Category.findById(normalizedSubId),
@@ -43,11 +103,18 @@ async function assertCategoryAndSubcategory(parentId, subId) {
     return { ok: false, status: 400, message: 'Subcategory not found' };
   }
 
-  if (!subCat.parentId || !subCat.parentId.equals(parentCat._id)) {
+  const parentPath = String(parentCat.path || '').trim();
+  const subPath = String(subCat.path || '').trim();
+  const isDirectChild = subCat.parentId && subCat.parentId.equals(parentCat._id);
+  const isDescendant =
+    Boolean(parentPath && subPath) &&
+    (subPath.startsWith(`${parentPath},`) || isDirectChild);
+
+  if (!isDescendant) {
     return {
       ok: false,
       status: 400,
-      message: 'Subcategory does not belong to the selected category',
+      message: 'Subcategory must belong under the selected category',
     };
   }
 
@@ -406,12 +473,17 @@ const getProducts = async (req, res) => {
       filter.$or = [{ category: { $in: categoryIds } }, { subcategory: { $in: categoryIds } }];
     }
 
+    appendTextSearchFilter(filter, req.query.q);
+
     const products = await Product.find(filter)
-      .populate(productPopulate)
+      .select(PRODUCT_LISTING_SELECT)
+      .populate(productListingPopulate)
       .sort('-createdAt')
       .lean();
-    const productsWithDiscounts = await enrichProductsWithCampaignPricing(products);
-    return res.json(sanitizeProductsReviewsForPublic(productsWithDiscounts));
+    const productsWithDiscounts = await enrichProductsWithCampaignPricing(products, {
+      userId: pricingUserId(req),
+    });
+    return res.json(toPublicListingProducts(productsWithDiscounts));
   } catch (error) {
     console.error('Get products error:', error.message);
     return res.status(500).json({ message: 'Server error' });
@@ -427,14 +499,17 @@ const getLatestProducts = async (req, res) => {
       : Math.min(Math.max(requestedLimit, 1), 50);
 
     const products = await Product.find()
-      .populate(productPopulate)
+      .select(PRODUCT_LISTING_SELECT)
+      .populate(productListingPopulate)
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
-    const productsWithDiscounts = await enrichProductsWithCampaignPricing(products);
+    const productsWithDiscounts = await enrichProductsWithCampaignPricing(products, {
+      userId: pricingUserId(req),
+    });
 
     return res.json({
-      data: sanitizeProductsReviewsForPublic(productsWithDiscounts),
+      data: toPublicListingProducts(productsWithDiscounts),
       count: productsWithDiscounts.length,
       limit,
     });
@@ -472,13 +547,16 @@ const getProductsByCategory = async (req, res) => {
     const products = await Product.find({
       $or: [{ category: { $in: categoryIds } }, { subcategory: { $in: categoryIds } }],
     })
-      .populate(productPopulate)
+      .select(PRODUCT_LISTING_SELECT)
+      .populate(productListingPopulate)
       .sort({ createdAt: -1 })
       .lean();
-    const productsWithDiscounts = await enrichProductsWithCampaignPricing(products);
+    const productsWithDiscounts = await enrichProductsWithCampaignPricing(products, {
+      userId: pricingUserId(req),
+    });
 
     return res.json({
-      data: sanitizeProductsReviewsForPublic(productsWithDiscounts),
+      data: toPublicListingProducts(productsWithDiscounts),
       count: productsWithDiscounts.length,
       categoryId,
     });
@@ -500,23 +578,35 @@ const getBestDealProducts = async (req, res) => {
       ? 0
       : Math.min(Math.max(requestedMinDiscount, 0), 100);
 
+    const userId = pricingUserId(req);
+    const cached = readBestDealsFromCache(userId, limit, minDiscountPercent);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const products = await Product.find()
-      .populate(productPopulate)
+      .select(PRODUCT_LISTING_SELECT)
+      .populate(productListingPopulate)
       .sort({ createdAt: -1 })
       .lean();
-    const productsWithDiscounts = await enrichProductsWithCampaignPricing(products);
+    const productsWithDiscounts = await enrichProductsWithCampaignPricing(products, {
+      userId,
+    });
     const bestDeals = productsWithDiscounts
       .filter((product) => product.hasActiveDiscount && product.discountPercentage >= minDiscountPercent)
       .sort((a, b) => b.discountPercentage - a.discountPercentage || b.discountAmount - a.discountAmount)
       .slice(0, limit);
 
-    return res.json({
+    const payload = {
       success: true,
-      data: sanitizeProductsReviewsForPublic(bestDeals),
+      data: toPublicListingProducts(bestDeals),
       count: bestDeals.length,
       limit,
       minDiscountPercent,
-    });
+    };
+
+    storeBestDealsInCache(userId, limit, minDiscountPercent, payload);
+    return res.json(payload);
   } catch (error) {
     console.error('Get best deal products error:', error.message);
     return res.status(500).json({ message: 'Server error' });
@@ -535,7 +625,9 @@ const getProductById = async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
-    const [productWithDiscount] = await enrichProductsWithCampaignPricing([product]);
+    const [productWithDiscount] = await enrichProductsWithCampaignPricing([product], {
+      userId: pricingUserId(req),
+    });
     return res.json(sanitizeProductReviewsForPublic(productWithDiscount));
   } catch (error) {
     console.error('Get product error:', error.message);

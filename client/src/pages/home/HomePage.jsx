@@ -1,18 +1,44 @@
-import Promotional from '../../components/Promotional'
+import { lazy, Suspense } from 'react'
 import CategoryCards from '../../components/categories/CategoryCards'
-import NewArrivalProduct from '../../components/NewArrivalProduct/NewArrivalProduct'
-import BestDeal from '../../components/BestDeal/BestDeal'
-import ReelsSection from '../../components/InstagramEmbadded/Insta'
+import LazyWhenVisible from '../../components/common/LazyWhenVisible'
 
+const Promotional = lazy(() => import('../../components/Promotional'))
+const NewArrivalProduct = lazy(() => import('../../components/NewArrivalProduct/NewArrivalProduct'))
+const BestDeal = lazy(() => import('../../components/BestDeal/BestDeal'))
+const ReelsSection = lazy(() => import('../../components/InstagramEmbadded/Insta'))
+
+const HeroFallback = () => (
+  <div className="w-full home-hero" aria-hidden>
+    <div className="home-hero__slide home-hero__slide--loading" />
+  </div>
+)
+
+const SectionFallback = ({ label }) => (
+  <div className="py-8 text-center text-sm text-neutral-500">{label}</div>
+)
 
 const HomePage = () => {
   return (
     <section className="w-full max-w-full overflow-x-hidden">
-      <Promotional />
+      <Suspense fallback={<HeroFallback />}>
+        <Promotional />
+      </Suspense>
       <CategoryCards />
-      <NewArrivalProduct />
-      <BestDeal />
-      <ReelsSection />
+      <LazyWhenVisible minHeight={280}>
+        <Suspense fallback={<SectionFallback label="Loading new arrivals…" />}>
+          <NewArrivalProduct />
+        </Suspense>
+      </LazyWhenVisible>
+      <LazyWhenVisible minHeight={320}>
+        <Suspense fallback={<SectionFallback label="Loading best deals…" />}>
+          <BestDeal />
+        </Suspense>
+      </LazyWhenVisible>
+      <LazyWhenVisible minHeight={360}>
+        <Suspense fallback={<SectionFallback label="Loading reels…" />}>
+          <ReelsSection />
+        </Suspense>
+      </LazyWhenVisible>
     </section>
   )
 }

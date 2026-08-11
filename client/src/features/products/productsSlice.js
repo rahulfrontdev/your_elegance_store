@@ -6,9 +6,7 @@ export const loadProducts = createAsyncThunk(
   async (params = {}, { rejectWithValue }) => {
     try {
       const { data } = await productsApi.fetchProducts(params)
-      const products = normalizeProductsPayload(data)
-      const dealProducts = await fetchDiscountedProductsSafely()
-      return mergeDiscountFields(products, dealProducts)
+      return normalizeProductsPayload(data)
     } catch (err) {
       return rejectWithValue(err.response?.data ?? err.message)
     }
@@ -32,9 +30,7 @@ export const loadProductsByCategory = createAsyncThunk(
   async (categoryId, { rejectWithValue }) => {
     try {
       const { data } = await productsApi.fetchProductsByCategory(categoryId)
-      const products = normalizeProductsPayload(data)
-      const dealProducts = await fetchDiscountedProductsSafely()
-      return mergeDiscountFields(products, dealProducts)
+      return normalizeProductsPayload(data)
     } catch (err) {
       return rejectWithValue(err.response?.data ?? err.message)
     }
@@ -55,32 +51,6 @@ function normalizeProductsPayload(payload) {
   if (Array.isArray(payload?.products)) return payload.products
   if (Array.isArray(payload?.items)) return payload.items
   return []
-}
-
-function productKey(product) {
-  const id = product?._id ?? product?.id
-  return id == null ? '' : String(id)
-}
-
-async function fetchDiscountedProductsSafely() {
-  try {
-    const { data } = await productsApi.fetchBestDealProducts()
-    return normalizeProductsPayload(data)
-  } catch {
-    return []
-  }
-}
-
-function mergeDiscountFields(products, discountedProducts) {
-  const saleById = new Map()
-  discountedProducts.forEach((p) => {
-    const id = productKey(p)
-    if (id) saleById.set(id, p)
-  })
-  return products.map((p) => {
-    const sale = saleById.get(productKey(p))
-    return sale ? { ...p, ...sale } : p
-  })
 }
 
 function normalizeProductPayload(payload) {
