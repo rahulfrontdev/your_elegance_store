@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import OptimizedImage from '../../components/common/OptimizedImage'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { cancelOrderRequest, getUserOrdersRequest } from '../../api/orderApi'
+import OrderListSkeleton from '../../components/orders/OrderListSkeleton'
 import { resolveOrderLifecycle } from '../../utils/orderLifecycle'
 
 function formatDate(iso) {
@@ -46,7 +47,8 @@ function formatOrderAddressLine(order) {
 const AccountOrdersPage = () => {
   const { user } = useAuth()
   const [apiOrders, setApiOrders] = useState([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [cancelTarget, setCancelTarget] = useState(null)
   const [cancelReason, setCancelReason] = useState('Ordered by mistake')
   const [cancelingId, setCancelingId] = useState('')
@@ -58,6 +60,8 @@ const AccountOrdersPage = () => {
     const userId = user?._id || user?.id
     if (!userId || !localStorage.getItem('token')) {
       setApiOrders([])
+      setIsLoading(false)
+      setHasLoadedOnce(true)
       return
     }
 
@@ -99,6 +103,7 @@ const AccountOrdersPage = () => {
       setApiOrders([])
     } finally {
       setIsLoading(false)
+      setHasLoadedOnce(true)
     }
   }, [user?._id, user?.id, debouncedSearch])
 
@@ -184,11 +189,9 @@ const AccountOrdersPage = () => {
         </div>
       )}
 
-      {isLoading ? (
-        <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
-          <p className="text-sm text-neutral-600">Loading your orders...</p>
-        </div>
-      ) : sortedOrders.length === 0 ? (
+      {isLoading && !hasLoadedOnce ? (
+        <OrderListSkeleton count={3} />
+      ) : sortedOrders.length === 0 && !isLoading ? (
         <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
           <Package className="mx-auto mb-3 text-neutral-400" size={26} />
           <p className="text-sm font-medium text-neutral-700">
@@ -199,7 +202,19 @@ const AccountOrdersPage = () => {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="relative space-y-3">
+          {isLoading && hasLoadedOnce && (
+            <div
+              className="absolute inset-0 z-10 flex items-start justify-center rounded-2xl bg-white/75 pt-10 backdrop-blur-[1px]"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <div className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm">
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                Updating orders…
+              </div>
+            </div>
+          )}
           {sortedOrders.map((o) => {
             const firstItem = o.items?.[0]
             return (

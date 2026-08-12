@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useSearchParams } from 'react-router-dom'
 import { fetchRootCategories } from '../../api/categoriesApi'
 import ActiveFilterChips from '../../components/products/ActiveFilterChips'
+import PageLoader from '../../components/common/PageLoader'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { loadProducts } from '../../features/products/productsSlice'
 import {
@@ -185,7 +186,7 @@ const ProductsPage = () => {
 
           {status === 'loading' ? (
             <div className="flex flex-1 items-center justify-center rounded-xl border border-neutral-200 bg-white py-20">
-              <p className="text-sm text-neutral-600">Loading products...</p>
+              <PageLoader label="Loading products…" compact />
             </div>
           ) : status === 'failed' ? (
             <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-red-200 bg-red-50 py-20 text-center">

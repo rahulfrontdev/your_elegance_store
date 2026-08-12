@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import LoadingOverlay from '../../components/common/LoadingOverlay'
 import AddressForm from '../../components/address/AddressForm'
 import { useCart } from '../../context/CartContext.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
@@ -447,6 +448,7 @@ const CheckoutPage = () => {
 
   return (
     <div className="px-3 py-4 sm:px-4 sm:py-5">
+      <LoadingOverlay show={isPlacingOrder} label="Placing your order…" />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-neutral-900">  Checkout</h1>

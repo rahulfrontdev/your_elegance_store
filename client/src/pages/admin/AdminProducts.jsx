@@ -3,11 +3,10 @@ import {
   adminCreateProduct,
   adminDeleteProduct,
   adminFetchCategoryById,
-  adminFetchCategoryChildren,
+  adminFetchCategoryTree,
   adminFetchProductById,
   adminFetchProductGstRates,
   adminFetchProducts,
-  adminFetchRootCategories,
   adminUpdateProduct,
 } from "../../api/adminApi";
 import UploadProgressBar from "../../components/admin/UploadProgressBar";
@@ -49,9 +48,7 @@ const emptyVariation = () => ({
 const initialFormState = {
   sku: "",
   name: "",
-  category: "",
-  childCategory: "",
-  grandchildCategory: "",
+  selectedCategory: "",
   colour: "",
   price: "",
   description: "",
@@ -72,8 +69,19 @@ function categoryEntityId(item) {
   return String(item?._id || item?.id || "").trim();
 }
 
-function resolveProductSubcategoryId(form) {
-  return String(form.grandchildCategory || form.childCategory || "").trim();
+function flattenCategoryTree(nodes, level = 0) {
+  if (!Array.isArray(nodes)) return [];
+
+  return nodes.flatMap((node) => {
+    const nodeId = categoryEntityId(node);
+    const nodeName = node?.name || "Unnamed";
+    const children = node?.children || node?.subcategories || [];
+
+    const currentNode = nodeId
+      ? [{ id: nodeId, label: `${"— ".repeat(level)}${nodeName}` }]
+      : [];
+    return [...currentNode, ...flattenCategoryTree(children, level + 1)];
+  });
 }
 
 async function buildCategoryChainFromLeaf(leafId) {
@@ -100,39 +108,20 @@ async function buildCategoryChainFromLeaf(leafId) {
   return chain;
 }
 
-function chainToFormSelection(chain = []) {
-  if (!Array.isArray(chain) || chain.length === 0) {
-    return { category: "", childCategory: "", grandchildCategory: "" };
-  }
-
-  if (chain.length === 1) {
-    return {
-      category: chain[0]?.id || "",
-      childCategory: "",
-      grandchildCategory: "",
-    };
-  }
-
-  if (chain.length === 2) {
-    return {
-      category: chain[0]?.id || "",
-      childCategory: chain[1]?.id || "",
-      grandchildCategory: "",
-    };
-  }
+async function resolveProductCategoryFields(selectedId) {
+  const chain = await buildCategoryChainFromLeaf(selectedId);
+  if (!chain.length) return null;
 
   return {
-    category: chain[0]?.id || "",
-    childCategory: chain[chain.length - 2]?.id || "",
-    grandchildCategory: chain[chain.length - 1]?.id || "",
+    category: chain[0].id,
+    subcategory: chain.length > 1 ? chain[chain.length - 1].id : "",
   };
 }
 
 const AdminProducts = () => {
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [childCategories, setChildCategories] = useState([]);
-  const [grandchildCategories, setGrandchildCategories] = useState([]);
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [gstRates, setGstRates] = useState([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -140,8 +129,6 @@ const AdminProducts = () => {
   const [productForm, setProductForm] = useState(initialFormState);
   const [existingImageUrl, setExistingImageUrl] = useState("");
   const [existingExtraImages, setExistingExtraImages] = useState([]);
-  const [subcategoriesLoading, setSubcategoriesLoading] = useState(false);
-  const [grandchildCategoriesLoading, setGrandchildCategoriesLoading] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -154,7 +141,7 @@ const AdminProducts = () => {
   }, []);
 
   const loadInitialData = async () => {
-    await Promise.all([loadProducts(), loadRootCategories(), loadGstRates()]);
+    await Promise.all([loadProducts(), loadCategoryOptions(), loadGstRates()]);
   };
 
   const loadProducts = async () => {
@@ -167,13 +154,17 @@ const AdminProducts = () => {
     }
   };
 
-  const loadRootCategories = async () => {
+  const loadCategoryOptions = async () => {
     try {
-      const response = await adminFetchRootCategories({ all: true });
-      setCategories(response?.data?.data || []);
+      setCategoriesLoading(true);
+      const response = await adminFetchCategoryTree({ all: true });
+      const treeData = response?.data?.data || [];
+      setCategoryOptions(flattenCategoryTree(treeData));
     } catch (error) {
       console.error("Error fetching categories:", error);
-      setCategories([]);
+      setCategoryOptions([]);
+    } finally {
+      setCategoriesLoading(false);
     }
   };
 
@@ -192,69 +183,8 @@ const AdminProducts = () => {
     }
   };
 
-  const loadChildCategories = async (categoryId) => {
-    if (!categoryId) {
-      setChildCategories([]);
-      return [];
-    }
-    try {
-      setSubcategoriesLoading(true);
-      const response = await adminFetchCategoryChildren(categoryId, { all: true });
-      const list = response?.data?.data || [];
-      setChildCategories(list);
-      return list;
-    } catch (error) {
-      console.error("Error fetching child categories:", error);
-      setChildCategories([]);
-      return [];
-    } finally {
-      setSubcategoriesLoading(false);
-    }
-  };
-
-  const loadGrandchildCategories = async (childCategoryId) => {
-    if (!childCategoryId) {
-      setGrandchildCategories([]);
-      return [];
-    }
-    try {
-      setGrandchildCategoriesLoading(true);
-      const response = await adminFetchCategoryChildren(childCategoryId, { all: true });
-      const list = response?.data?.data || [];
-      setGrandchildCategories(list);
-      return list;
-    } catch (error) {
-      console.error("Error fetching grandchild categories:", error);
-      setGrandchildCategories([]);
-      return [];
-    } finally {
-      setGrandchildCategoriesLoading(false);
-    }
-  };
-
-  const hydrateCategorySelectors = async ({ categoryId, childCategoryId, grandchildCategoryId }) => {
-    setChildCategories([]);
-    setGrandchildCategories([]);
-
-    if (categoryId) {
-      await loadChildCategories(categoryId);
-    }
-    if (childCategoryId) {
-      await loadGrandchildCategories(childCategoryId);
-    }
-
-    setProductForm((prev) => ({
-      ...prev,
-      category: categoryId || "",
-      childCategory: childCategoryId || "",
-      grandchildCategory: grandchildCategoryId || "",
-    }));
-  };
-
   const resetForm = () => {
     setProductForm(initialFormState);
-    setChildCategories([]);
-    setGrandchildCategories([]);
     setExistingImageUrl("");
     setExistingExtraImages([]);
     setEditingProductId("");
@@ -291,9 +221,7 @@ const AdminProducts = () => {
       setProductForm({
         sku: product?.sku || "",
         name: product?.name || "",
-        category: "",
-        childCategory: "",
-        grandchildCategory: "",
+        selectedCategory: leafCategoryId ? String(leafCategoryId) : "",
         colour: product?.colour || "",
         price: product?.price?.toString?.() || "",
         description: product?.description || "",
@@ -312,21 +240,6 @@ const AdminProducts = () => {
       setExistingImageUrl(product?.imageUrl || product?.image || "");
       setExistingExtraImages(Array.isArray(product?.images) ? product.images : []);
       setIsModalOpen(true);
-
-      if (leafCategoryId) {
-        try {
-          const chain = await buildCategoryChainFromLeaf(leafCategoryId);
-          const selection = chainToFormSelection(chain);
-          await hydrateCategorySelectors(selection);
-        } catch (error) {
-          console.error("Error resolving product categories:", error);
-          await hydrateCategorySelectors({
-            categoryId,
-            childCategoryId: subcategoryId || "",
-            grandchildCategoryId: "",
-          });
-        }
-      }
     } catch (error) {
       console.error("Error loading product details:", error);
     }
@@ -348,30 +261,8 @@ const AdminProducts = () => {
       return;
     }
 
-    if (name === "category") {
-      setProductForm((prev) => ({
-        ...prev,
-        category: value,
-        childCategory: "",
-        grandchildCategory: "",
-      }));
-      setGrandchildCategories([]);
-      loadChildCategories(value);
-      return;
-    }
-
-    if (name === "childCategory") {
-      setProductForm((prev) => ({
-        ...prev,
-        childCategory: value,
-        grandchildCategory: "",
-      }));
-      loadGrandchildCategories(value);
-      return;
-    }
-
-    if (name === "grandchildCategory") {
-      setProductForm((prev) => ({ ...prev, grandchildCategory: value }));
+    if (name === "selectedCategory") {
+      setProductForm((prev) => ({ ...prev, selectedCategory: value }));
       return;
     }
 
@@ -445,7 +336,7 @@ const AdminProducts = () => {
   };
 
   const validateForm = () => {
-    if (!productForm.name?.trim() || !productForm.category) return false;
+    if (!productForm.name?.trim() || !productForm.selectedCategory?.trim()) return false;
 
     const priceNum = Number(productForm.price);
     if (!Number.isFinite(priceNum) || priceNum < 0) {
@@ -460,36 +351,12 @@ const AdminProducts = () => {
       return false;
     }
 
-    const selectedCategoryExists = categories.some(
-      (cat) => (cat?._id || cat?.id) === productForm.category
+    const selectedCategoryExists = categoryOptions.some(
+      (opt) => opt.id === productForm.selectedCategory
     );
     if (!selectedCategoryExists) {
       alert("Selected category is invalid. Please select category again.");
       return false;
-    }
-
-    if (productForm.childCategory?.trim()) {
-      const childExists = childCategories.some(
-        (item) => categoryEntityId(item) === productForm.childCategory
-      );
-      if (!childExists) {
-        alert("Selected child category is invalid. Please reselect it.");
-        return false;
-      }
-    }
-
-    if (productForm.grandchildCategory?.trim()) {
-      if (!productForm.childCategory?.trim()) {
-        alert("Select a child category before choosing a grandchild category.");
-        return false;
-      }
-      const grandchildExists = grandchildCategories.some(
-        (item) => categoryEntityId(item) === productForm.grandchildCategory
-      );
-      if (!grandchildExists) {
-        alert("Selected grandchild category is invalid. Please reselect it.");
-        return false;
-      }
     }
 
     const allowedMime = /^image\/(jpeg|pjpeg|png|webp)$/i;
@@ -545,14 +412,13 @@ const AdminProducts = () => {
     return true;
   };
 
-  const buildFormData = () => {
+  const buildFormData = (categoryFields) => {
     const formData = new FormData();
     formData.append("sku", String(productForm.sku || "").trim());
     formData.append("name", productForm.name.trim());
-    formData.append("category", String(productForm.category).trim());
-    const sub = resolveProductSubcategoryId(productForm);
-    if (sub) {
-      formData.append("subcategory", sub);
+    formData.append("category", String(categoryFields.category).trim());
+    if (categoryFields.subcategory) {
+      formData.append("subcategory", String(categoryFields.subcategory).trim());
     }
     formData.append("colour", String(productForm.colour || "").trim());
     formData.append("price", String(productForm.price).trim());
@@ -608,10 +474,24 @@ const AdminProducts = () => {
       return;
     }
 
+    let categoryFields;
+    try {
+      categoryFields = await resolveProductCategoryFields(productForm.selectedCategory);
+    } catch (error) {
+      console.error("Error resolving category:", error);
+      alert("Could not resolve the selected category. Please try again.");
+      return;
+    }
+
+    if (!categoryFields?.category) {
+      alert("Selected category is invalid. Please select category again.");
+      return;
+    }
+
     try {
       setSaving(true);
       setUploadProgress(0);
-      const formData = buildFormData();
+      const formData = buildFormData(categoryFields);
       const progressOptions = {
         onProgress: (pct) => setUploadProgress(pct),
       };
@@ -791,57 +671,18 @@ const AdminProducts = () => {
                 </p>
               )}
               <select
-                name="category"
-                value={productForm.category}
+                name="selectedCategory"
+                value={productForm.selectedCategory}
                 onChange={handleChange}
-                className="border border-gray-300 p-2 rounded-lg outline-none"
-              >
-                <option value="">Select Parent Category *</option>
-                {categories.map((cat) => (
-                  <option key={cat._id || cat.id} value={cat._id || cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                name="childCategory"
-                value={productForm.childCategory}
-                onChange={handleChange}
-                disabled={!productForm.category || subcategoriesLoading}
-                className="border border-gray-300 p-2 rounded-lg outline-none disabled:bg-gray-100"
+                disabled={categoriesLoading}
+                className="border border-gray-300 p-2 rounded-lg outline-none md:col-span-2 disabled:bg-gray-100"
               >
                 <option value="">
-                  {subcategoriesLoading
-                    ? "Loading..."
-                    : childCategories.length > 0
-                      ? "Child Category (optional)"
-                      : "No child categories"}
+                  {categoriesLoading ? "Loading categories..." : "Select Category *"}
                 </option>
-                {childCategories.map((item) => (
-                  <option key={item._id || item.id} value={item._id || item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                name="grandchildCategory"
-                value={productForm.grandchildCategory}
-                onChange={handleChange}
-                disabled={!productForm.childCategory || grandchildCategoriesLoading}
-                className="border border-gray-300 p-2 rounded-lg outline-none disabled:bg-gray-100"
-              >
-                <option value="">
-                  {grandchildCategoriesLoading
-                    ? "Loading..."
-                    : grandchildCategories.length > 0
-                      ? "Grandchild Category (optional)"
-                      : productForm.childCategory
-                        ? "No grandchild categories"
-                        : "Select child category first"}
-                </option>
-                {grandchildCategories.map((item) => (
-                  <option key={item._id || item.id} value={item._id || item.id}>
-                    {item.name}
+                {categoryOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
                   </option>
                 ))}
               </select>

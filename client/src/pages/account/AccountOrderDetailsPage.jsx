@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Calendar, CreditCard, MapPin, Package } from 'lucide-react'
 import OptimizedImage from '../../components/common/OptimizedImage'
 import { getMyOrderByIdRequest, submitOrderReviewRequest } from '../../api/orderApi'
+import PageLoader from '../../components/common/PageLoader'
 import { resolveOrderLifecycle } from '../../utils/orderLifecycle'
 
 function formatDate(iso) {
@@ -215,8 +216,8 @@ const AccountOrderDetailsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-neutral-200 bg-white p-6 text-sm text-neutral-600 shadow-sm">
-        Loading order details...
+      <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm">
+        <PageLoader label="Loading order details…" compact />
       </div>
     )
   }

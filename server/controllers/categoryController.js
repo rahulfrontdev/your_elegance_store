@@ -30,8 +30,11 @@ const buildSlug = (name) =>
 const escapeRegex = (text) =>
   text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const canViewInactive = (req) =>
-  req.query.all === "true" && req.user && req.user.role === "admin";
+const canViewInactive = (req) => {
+  const all = req.query.all;
+  const wantsAll = all === "true" || all === "1" || all === true;
+  return wantsAll && req.user && req.user.role === "admin";
+};
 
 /* -------------------- CREATE -------------------- */
 // Create category at any depth
@@ -124,7 +127,7 @@ exports.getRootCategories = async (req, res) => {
     const includeInactive = canViewInactive(req);
 
     const filter = {
-      level: 0,
+      parentId: null,
       ...(includeInactive ? {} : { isActive: true }),
     };
 

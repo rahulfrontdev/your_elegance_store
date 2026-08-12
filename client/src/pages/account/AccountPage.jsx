@@ -1,4 +1,6 @@
+import { Suspense } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import PageLoader from '../../components/common/PageLoader'
 
 const navItems = [
   { to: 'orders', label: 'My Orders' },
@@ -51,7 +53,9 @@ const AccountPage = () => {
         </aside>
 
         <section className="min-w-0">
-          <Outlet />
+          <Suspense fallback={<PageLoader label="Loading page…" compact />}>
+            <Outlet />
+          </Suspense>
         </section>
       </div>
     </div>
